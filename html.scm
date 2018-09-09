@@ -26,11 +26,14 @@
     source
     track
     wbr))
-
+;; pair? if arg is atom ,return #t,else if list return #t
 (define (void-element? tag)
   "Return #t if TAG is a void element."
   (pair? (memq tag %void-elements)))
 
+;; something like '<' -> &le;
+;; This need to be update from time to time 
+;; --- mark ---
 (define %escape-chars
   (alist->hash-table
    '((#\" . "quot")
@@ -38,14 +41,14 @@
      (#\< . "lt")
      (#\> . "gt"))))
 
-(define (string->escaped-html s port)
+(define (string->escaped-html S port)
   "Write the HTML escaped form of S to PORT."
   (define (escape c)
     (let ((escaped (hash-ref %escape-chars c)))
       (if escaped
           (format port "&~a;" escaped)
           (display c port))))
-  (string-for-each escape s))
+  (string-for-each escape S))
 
 (define (object->escaped-html obj port)
   "Write the HTML escaped form of OBJ to PORT."

@@ -4,6 +4,9 @@
                #:use-module (Flax subsite)
                #:use-module (Flax site)
                #:use-module (Flax utils)
-               #:export (
+               #:export (main))
 
-                         ))
+(define main
+  (lambda (arg . extra-args)
+    (add-to-load-path (getcwd))
+    ))
