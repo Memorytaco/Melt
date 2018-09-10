@@ -9,22 +9,23 @@
                #:export (absolute-path
                          relative-path
                          decompose-file-name
-                         compose-file-name))
+                         compose-file-name
+                         mkdir-p))
 
 ;; return the absolute path of the file
-(define absolute-path 
+(define absolute-path
   (lambda (file-name)
     "Return the absolute path of the file"
     (if (absolute-file-name? file-name)
-        file-name
-        (string-append (getcwd) "/" file-name))))
+      file-name
+      (string-append (getcwd) "/" file-name))))
 
 ;; decompose a string
 ;; example
-;; "
+;; "/usr/lib/share" => ("usr" "lib" "share")
 (define decompose-file-name
   (lambda (filename)
-    "Split filename into components seperated by '/'."
+    "Split filename into components seperated by '/' "
     (match filename
       ("" '())  ;; if string is empty
       ("/" '("")) ;; if string only has one '/'
@@ -36,3 +37,28 @@
   (lambda (components)
     "put all strings of the filename together"
     (string-join components "/" 'prefix)))
+
+;; create directory
+(define (mkdir-p dir)
+  "create directory ~dir~ and all its ancestors"
+  (define absolute?
+    (string-prefix? "/" dir))
+
+  (define not-slash
+    (char-set-complement (char-set #\/)))
+    (let loop ((components (string-tokenize dir not-slash))
+              (root        (if absolute?
+                               ""
+                               ".")))
+      (match components
+        ((head tail ...)
+         (let ((path (string-append root "/" head)))
+           (catch 'system-errors
+             (lambda ()
+               (mkdir path)
+               (loop tail path))
+             (lambda (args)
+               (if (= EEXIST (system-error-errno args))
+                   (loop tail path)
+                   (apply throw args))))))
+      (() #t))))

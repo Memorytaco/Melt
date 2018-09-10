@@ -8,5 +8,4 @@
 
 (define main
   (lambda (arg . extra-args)
-    (add-to-load-path (getcwd))
-    ))
+    (add-to-load-path (getcwd))))

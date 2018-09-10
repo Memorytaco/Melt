@@ -2,16 +2,16 @@
                #:use-module (srfi srfi-1)
                #:use-module (ice-9 match)
                #:use-module (Flax utils)
-               #:export (create-asset
+               #:export (make-asset
                          is-asset?
-                         asset-source
-                         asset-target
+                         get-asset-source
+                         get-asset-target
                          install-asset
                          directory-assets))
 
 
 (define-record-type <asset>
-  (create-asset source target)
+  (make-asset source target)
   is-asset?
   (source get-asset-source)
   (target get-asset-target))
