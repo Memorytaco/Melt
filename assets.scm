@@ -1,3 +1,4 @@
+;; This is used to cp all resource to destination
 (define-module (Flax asset)
                #:use-module (srfi srfi-1)
                #:use-module (ice-9 match)
@@ -6,7 +7,7 @@
                          is-asset?
                          get-asset-source
                          get-asset-target
-                         install-asset
+                         cp-asset
                          directory-assets))
 
 
@@ -31,4 +32,15 @@
     ;; manipulated then converted back into a string
     (define leaf
       (let ((base-lenth (length (decompose-file-name directory)))
-            (dest* (decompose-file-name destination)
+            (dest* (decompose-file-name destination)))
+          (lambda (file-name stat memo)
+            (if (keep? file-name)
+                (let* ((file-name* (file-name-components file-name))
+                       (target (join-file-name-components (append dest* (drop file-name* base-lenth)))))
+                  (cons (make-asset file-name target) memo))
+                memo))))
+    (define (noop file-name stat memo) memo)
+    (define (err file-name stat errno memo)
+      (error "asset processing failed with errno: " file-name errno))
+
+    (file-system-fold enter? leaf noop noop noop err '() directory)))

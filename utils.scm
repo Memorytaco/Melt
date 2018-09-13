@@ -45,20 +45,23 @@
     (string-prefix? "/" dir))
 
   (define not-slash
+    ;; get all complement of charset #<charset {#\null #\. #\0 ....}>
     (char-set-complement (char-set #\/)))
-    (let loop ((components (string-tokenize dir not-slash))
-              (root        (if absolute?
-                               ""
-                               ".")))
-      (match components
-        ((head tail ...)
-         (let ((path (string-append root "/" head)))
-           (catch 'system-errors
-             (lambda ()
-               (mkdir path)
-               (loop tail path))
-             (lambda (args)
-               (if (= EEXIST (system-error-errno args))
-                   (loop tail path)
-                   (apply throw args))))))
+
+  (let loop ((components (string-tokenize dir not-slash))
+            (root        (if absolute?
+                             ""
+                             ".")))
+    (match components
+      ((head tail ...)
+       (let ((path (string-append root "/" head)))
+         (catch 'system-errors
+           ;; NOTE : couldn't understand
+           (lambda ()
+             (mkdir path)
+             (loop tail path))
+           (lambda (args)
+             (if (= EEXIST (system-error-errno args))
+                 (loop tail path)
+                 (apply throw args))))))
       (() #t))))

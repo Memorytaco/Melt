@@ -1,9 +1,10 @@
+;; the page data type
 (define-module (Flax page)
     #:use-module (ice-9 match)
     #:use-module (srfi srfi-9)
     #:use-module (srfi srfi-26)
     #:use-module (Flax utils)
-    
+
     #:export (make-page
               is-page?
               get-page-file-name
@@ -19,7 +20,7 @@
     (writer    get-page-writer))
 
 (define write-page
-    (lambda (page output-directory) 
+    (lambda (page output-directory)
         (match page
             (($ <page> file-name contents writer)
              (let ((output (string-append output-directory "/" file-name)))
