@@ -10,7 +10,9 @@
                          relative-path
                          decompose-file-name
                          compose-file-name
-                         mkdir-p))
+                         mkdir-p
+                         delete-file-recursively
+                         make-user-module))
 
 ;; return the absolute path of the file
 (define absolute-path
@@ -65,3 +67,39 @@
                  (loop tail path)
                  (apply throw args))))))
       (() #t))))
+
+
+ ;; delete file
+(define* (delete-file-recursively dir #:key follow-mounts?)
+"Delete DIR recursively, like `rm -rf', without following symlinks.  Don't
+follow mount points either, unless FOLLOW-MOUNTS? is true.  Report but ignore
+errors."
+  (let ((dev (stat:dev (lstat dir))))
+    (file-system-fold (lambda (dir stat result)    ; enter?
+                        (or follow-mounts?
+                          (= dev (stat:dev stat))))
+                      (lambda (file stat result)   ; leaf
+                          (delete-file file))
+                      (const #t)                   ; down
+                      (lambda (dir stat result)    ; up
+                      (rmdir dir))
+                      (const #t)                   ; skip
+                      (lambda (file stat errno result)
+                        (format (current-error-port)
+                      "warning: failed to delete ~a: ~a~%"
+                            file (strerror errno)))
+                      #t
+                      dir
+
+                      ;; Don't follow symlinks.
+                      lstat)))
+
+;; return a new user module with the additional modules
+;; loaded
+(define make-user-module
+  (lambda (modules)
+    (let ((module (make-fresh-user-module)))
+      (for-each (lambda (iface)
+                  (module-use! module (resolve-interface iface)))
+                modules)
+      module)))

@@ -1,4 +1,5 @@
 ;; the page data type
+;; TODO: unfinished file
 (define-module (Flax page)
     #:use-module (ice-9 match)
     #:use-module (srfi srfi-9)
@@ -11,7 +12,10 @@
               get-page-contents
               get-page-writer
               write-page))
-
+;;
+;; define the record <page>
+;; ~file-name~ is a string
+;; ~contents~ is 
 (define-record-type <page>
     (make-page file-name contents writer)
     is-page?
