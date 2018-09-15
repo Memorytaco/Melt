@@ -1,11 +1,16 @@
+;; NOTE : unfinished file
 (define-module (Flax ui)
-               #:use-module (ice-9 format)
-               #:use-module (srfi srfi-9)
-               #:use-module (ice-9 match)
+  #:use-module (Flax utils)
+  #:use-module (Flax command build)
+  
+  #:use-module (ice-9 format)
+  #:use-module (srfi srfi-9)
+  #:use-module (ice-9 match)
+  #:use-module (srfi srfi-11)
+  
+  #:export (flax))
 
-               #:export (flax))
-
-;; NOTE: varibles 
+;; varibles
 (define %commands '("build" "serve"))
 
 
@@ -17,13 +22,19 @@
 (define (show-flax-help)
   (format #t "Ok~%"))
 
-
-(define flax
-  (lambda (arg0 . extra-args)
-  ;; add current directory to load path
-    (add-to-load-path (getcwd))
-    (match extra-args
-      (() (show-flax))
-      ((or ("-h") ("--help"))
-        (show-flax-help))
-      (_  (show-flax)))))
+;; The main function
+(define (flax arg0 . extra-args)
+  (add-to-load-path (getcwd))
+  (match extra-args
+    (() (show-flax))
+    ((or ("-h") ("--help"))
+     (show-flax-help))
+    (("build")
+     (let-values (((flag config-file) (build)))
+       (if (not flag)
+	   (format (current-error-port) "~a : Config File Doesn't exist!!~%" config-file))))
+    (("build" args ...)
+     (let-values (((flag config-file) (build #:config-file (car args))))
+       (if (not flag)
+	   (format (current-error-port) "~a : Config File Doesn't exist!!~%" config-file))))
+    (_ (show-flax))))

@@ -1,8 +1,12 @@
+;; NOTE : unfinished file
+
 (define-module (Flax site)
     #:use-module (Flax reader)
     #:use-module (Flax page)
     #:use-module (Flax post)
     #:use-module (Flax asset)
+
+    #:use-module (srfi srfi-9)
     
     #:export (create-site
               is-site?
@@ -22,31 +26,31 @@
 ;; ~readers~ a list of reader objects
 ;; ~builders~ a list of procedures for building pages
 (define-record-type <site>
-    (make-site title domain posts-directory build-directory
-               default-metadata readers builders)
-    is-site?
-    (title get-site-title)
-    (domain get-site-domain)
-    (posts-directory get-site-postdirectory)
-    (build-directory get-site-build-directory)
-    (default-metadata get-site-metadata)
-    (readers get-site-readers)
-    (builders get-site-builders))
+  (make-site title domain posts-directory build-directory
+             default-metadata readers builders)
+  is-site?
+  (title get-site-title)
+  (domain get-site-domain)
+  (posts-directory get-site-postdirectory)
+  (build-directory get-site-build-directory)
+  (default-metadata get-site-metadata)
+  (readers get-site-readers)
+  (builders get-site-builders))
 
 
 ;; create the site object
-(define* (create-site #:key (title "Welcome to Flax!")
-                            (domain "expamle.com")
-                            (posts-directory "posts")
-                            (build-directory "site")
-                            (default-metadata '())
-                            (readers '(sxml-reader html-reader))
-                            (builders '())
-    (make-site title domain posts-directory build-directory
-               default-metadata readers builders)))
-
-;; TODO : unfinished
-;; 
-(define (build-site site)
-    (let ((posts (if (file-exists? (get-site-postdirectory site))
-                     ())))))
+(define* (create-site #:key
+		      (title "Welcome to Flax!")
+                      (domain "expamle.com")
+                      (posts-directory "posts")
+                      (build-directory "site")
+                      (default-metadata '())
+                      (readers '(sxml-reader html-reader))
+                      (builders '()))
+  (make-site title
+	     domain
+	     posts-directory
+	     build-directory
+	     default-metadata
+	     readers
+	     builders))

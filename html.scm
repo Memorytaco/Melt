@@ -1,5 +1,5 @@
 ;; convert sxml to html
-
+;; NOTE : done
 (define-module (Flax html)
   #:use-module (sxml simple)
   #:use-module (srfi srfi-26)
@@ -32,7 +32,7 @@
   (pair? (memq tag %void-elements)))
 
 ;; something like '<' -> &le;
-;; This need to be update from time to time 
+;; This need to be update from time to time
 ;; --- mark ---
 (define %escape-chars
   (alist->hash-table

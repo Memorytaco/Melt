@@ -1,3 +1,4 @@
+;; NOTE : done
 (define-module (Flax utils)
                #:use-module (ice-9 ftw)
                #:use-module (ice-9 match)
@@ -6,39 +7,35 @@
                #:use-module (srfi srfi-19)
                #:use-module (srfi srfi-26)
 
-               #:export (absolute-path
-                         relative-path
+               #:export (get-absolute-path
                          decompose-file-name
                          compose-file-name
                          mkdir-p
                          delete-file-recursively
-                         make-user-module))
-
+                         make-user-module
+                         remove-stat
+                         get-file-tree-list))
 ;; return the absolute path of the file
-(define absolute-path
-  (lambda (file-name)
-    "Return the absolute path of the file"
-    (if (absolute-file-name? file-name)
+;; TODO : need to do better
+(define (get-absolute-path file-name)
+  (if (absolute-file-name? file-name)
       file-name
-      (string-append (getcwd) "/" file-name))))
+      (string-append (getcwd) "/" file-name)))
 
 ;; decompose a string
 ;; example
-;; "/usr/lib/share" => ("usr" "lib" "share")
-(define decompose-file-name
-  (lambda (filename)
-    "Split filename into components seperated by '/' "
-    (match filename
-      ("" '())  ;; if string is empty
-      ("/" '("")) ;; if string only has one '/'
-      (_ (delete "" (string-split filename #\/))))))
+;; "////usr/lib/share" => ("usr" "lib" "share")
+(define (decompose-file-name filename)
+  "split filename into components seperated by '/' "
+  (match filename
+    ("" '())      ;; if string is empty
+    ("/" '(""))   ;; if string only has one '/'
+    (_ (delete "" (string-split filename #\/)))))
 
 ;; components is a list of strings
 ;; like ("hello" "nice" "good") => /hello/nice/good
-(define compose-file-name
-  (lambda (components)
-    "put all strings of the filename together"
-    (string-join components "/" 'prefix)))
+(define (compose-file-name components)
+  (string-join components "/" 'prefix))
 
 ;; create directory
 (define (mkdir-p dir)
@@ -68,8 +65,23 @@
                  (apply throw args))))))
       (() #t))))
 
+;; remove the file tree list stat and return
+;; the ~file-tree-list~ is the value of procedure
+;; ~file-system-tree~ which is in (ice-9 ftw)
+(define (remove-stat file-tree-list)
+  (match file-tree-list
+    ((name stat)
+      name)
+    ((name stat children ... )
+      (cons (car file-tree-list) (map remove-stat children)))))
 
- ;; delete file
+;; if file-name is a file,return the file name
+;; if the file-name is a directory, return the tree list of the directory
+;; just like execute "tree file-name"
+(define (get-file-tree-list file-name)
+  (remove-stat (file-system-tree file-name)))
+
+;; delete file
 (define* (delete-file-recursively dir #:key follow-mounts?)
 "Delete DIR recursively, like `rm -rf', without following symlinks.  Don't
 follow mount points either, unless FOLLOW-MOUNTS? is true.  Report but ignore
