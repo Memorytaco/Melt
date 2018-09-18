@@ -12,8 +12,9 @@
             get-post-file-name
             get-post-metadata
             get-post-sxml
-     
-            post-ref))
+	    set-post-sxml
+            
+	    post-ref))
 
 
 ;; ~metadata~ is an alist
@@ -23,4 +24,5 @@
   is-post?
   (file-name get-post-file-name)
   (metadata get-post-metadata)
-  (sxml get-post-sxml))
+  (sxml get-post-sxml set-post-sxml))
+

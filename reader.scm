@@ -35,7 +35,7 @@
 ;; return the function which returns #t if the file is
 ;; end with ".~ext~"
 (define (make-file-extension-matcher ext)
-"return the compiled regexp"
+  "return the compiled regexp"
   (let ((regexp (make-regexp (string-append "\\." ext "$"))))
     (lambda (file-name)
       (regexp-match? (regexp-exec regexp file-name)))))

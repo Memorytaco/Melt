@@ -10,7 +10,6 @@
             is-asset?
             get-asset-source
             get-asset-target
-	    is-directory?
             cp-file-tree))
 
 
@@ -20,11 +19,10 @@
   (source get-asset-source)
   (target get-asset-target))
 
-;; if dir is directory,return #t else return #f
-(define (is-directory? file-name)
-  (if (eq? 'directory (stat:type (stat file-name)))
-      #t
-      #f))
+(define (asset source target)
+  (let ((asset-src (make-asset source target)))
+    (cp-file-tree source target)))
+
 ;; return a list of ~nth~ same element
 (define (repeat-element-of-list nth element)
   (if (= 0 nth)

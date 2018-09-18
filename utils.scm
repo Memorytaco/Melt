@@ -1,20 +1,25 @@
 ;; NOTE : done
 (define-module (Flax utils)
-               #:use-module (ice-9 ftw)
-               #:use-module (ice-9 match)
-               #:use-module (srfi srfi-1)
-               #:use-module (srfi srfi-13)
-               #:use-module (srfi srfi-19)
-               #:use-module (srfi srfi-26)
+  #:use-module (Flax site)
+  
+  #:use-module (ice-9 ftw)
+  #:use-module (ice-9 match)
+  #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-13)
+  #:use-module (srfi srfi-19)
+  #:use-module (srfi srfi-26)
+  
+  #:export (get-absolute-path
+            decompose-file-name
+            compose-file-name
+            mkdir-p
+            delete-file-recursively
+            make-user-module
+            remove-stat
+	    is-directory?
+            get-file-tree-list
+	    config-load))
 
-               #:export (get-absolute-path
-                         decompose-file-name
-                         compose-file-name
-                         mkdir-p
-                         delete-file-recursively
-                         make-user-module
-                         remove-stat
-                         get-file-tree-list))
 ;; return the absolute path of the file
 ;; TODO : need to do better
 (define (get-absolute-path file-name)
@@ -22,48 +27,60 @@
       file-name
       (string-append (getcwd) "/" file-name)))
 
+;; load-file
+(define (config-load file-name)
+  (let ((path-to-file-name (get-absolute-path file-name)))
+    (if (file-exists? path-to-file-name)
+	(let ((obj (load path-to-file-name)))
+	  (if (is-site? obj)
+	      obj
+	      (begin
+		(format (current-error-port) "Invalid obj ~%expect site but got ~a~%" obj)
+		'())))
+	(begin
+	  (format (current-error-port) "Error ! File ~a doesn't exist!~%" file-name)
+	  '()))))
+
+
 ;; decompose a string
 ;; example
 ;; "////usr/lib/share" => ("usr" "lib" "share")
-(define (decompose-file-name filename)
+(define (decompose-file-name file-name)
   "split filename into components seperated by '/' "
-  (match filename
+  (match file-name
     ("" '())      ;; if string is empty
     ("/" '(""))   ;; if string only has one '/'
-    (_ (delete "" (string-split filename #\/)))))
+    (_ (delete "" (string-split file-name #\/)))))
 
 ;; components is a list of strings
 ;; like ("hello" "nice" "good") => /hello/nice/good
 (define (compose-file-name components)
   (string-join components "/" 'prefix))
 
+;; if dir is directory,return #t else return #f
+(define (is-directory? file-name)
+  (if (eq? 'directory (stat:type (stat file-name)))
+      #t
+      #f))
+
 ;; create directory
 (define (mkdir-p dir)
-  "create directory ~dir~ and all its ancestors"
-  (define absolute?
-    (string-prefix? "/" dir))
-
-  (define not-slash
-    ;; get all complement of charset #<charset {#\null #\. #\0 ....}>
-    (char-set-complement (char-set #\/)))
-
-  (let loop ((components (string-tokenize dir not-slash))
-            (root        (if absolute?
-                             ""
-                             ".")))
-    (match components
-      ((head tail ...)
-       (let ((path (string-append root "/" head)))
-         (catch 'system-errors
-           ;; NOTE : couldn't understand
-           (lambda ()
-             (mkdir path)
-             (loop tail path))
-           (lambda (args)
-             (if (= EEXIST (system-error-errno args))
-                 (loop tail path)
-                 (apply throw args))))))
-      (() #t))))
+  "Create the dir just like use makedir bash command but clever"
+  (let ((dir-list (decompose-file-name dir))
+	(envirement-list (decompose-file-name (getcwd))))
+    (while (pair? dir-list)
+      (set! envirement-list (append envirement-list (list (car dir-list))))
+      (set! dir-list (cdr dir-list))
+      (let ((file-name (compose-file-name envirement-list)))
+	(if (file-exists? file-name)
+	    (begin
+	      (if (is-directory? file-name)
+		  (continue)
+		  (begin
+		    (format (current-error-port) "There exists conflicts file name! cancel!~%")
+		    (break))))
+	    (mkdir file-name))))
+    #t))
 
 ;; remove the file tree list stat and return
 ;; the ~file-tree-list~ is the value of procedure
@@ -83,26 +100,26 @@
 
 ;; delete file
 (define* (delete-file-recursively dir #:key follow-mounts?)
-"Delete DIR recursively, like `rm -rf', without following symlinks.  Don't
+  "Delete DIR recursively, like `rm -rf', without following symlinks.  Don't
 follow mount points either, unless FOLLOW-MOUNTS? is true.  Report but ignore
 errors."
   (let ((dev (stat:dev (lstat dir))))
     (file-system-fold (lambda (dir stat result)    ; enter?
                         (or follow-mounts?
-                          (= dev (stat:dev stat))))
+                            (= dev (stat:dev stat))))
                       (lambda (file stat result)   ; leaf
-                          (delete-file file))
+                        (delete-file file))
                       (const #t)                   ; down
                       (lambda (dir stat result)    ; up
-                      (rmdir dir))
+			(rmdir dir))
                       (const #t)                   ; skip
                       (lambda (file stat errno result)
                         (format (current-error-port)
-                      "warning: failed to delete ~a: ~a~%"
-                            file (strerror errno)))
+				"warning: failed to delete ~a: ~a~%"
+				file (strerror errno)))
                       #t
                       dir
-
+		      
                       ;; Don't follow symlinks.
                       lstat)))
 

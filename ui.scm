@@ -17,10 +17,17 @@
 ;; TODO : continue to update
 (define (show-flax)
   (format #t "This is another static site generator~%")
-  (format #t "Please add \"-h\" or \"--help\" to get further help~%"))
+  (format #t "Please add \"-h\" or \"--help\" to get further help~%")
+  (format #t "For more information please follow github io page~%"))
 
 (define (show-flax-help)
-  (format #t "Ok~%"))
+  (format #t "Basic usage : ~%")
+  (format #t "flax [ command ] [ options ] [ arguments ] ~%~%")
+  (format #t "command list as follows :: ~%")
+  (format #t "        build~%"))
+
+
+
 
 ;; The main function
 (define (flax arg0 . extra-args)
@@ -30,11 +37,7 @@
     ((or ("-h") ("--help"))
      (show-flax-help))
     (("build")
-     (let-values (((flag config-file) (build)))
-       (if (not flag)
-	   (format (current-error-port) "~a : Config File Doesn't exist!!~%" config-file))))
+     (build))
     (("build" args ...)
-     (let-values (((flag config-file) (build #:config-file (car args))))
-       (if (not flag)
-	   (format (current-error-port) "~a : Config File Doesn't exist!!~%" config-file))))
+     (build #:config-file (car args)))
     (_ (show-flax))))
