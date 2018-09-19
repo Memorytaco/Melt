@@ -12,7 +12,6 @@
             get-asset-target
             cp-file-tree))
 
-
 (define-record-type <asset>
   (make-asset source target)
   is-asset?

@@ -1,5 +1,6 @@
 (define-module (Flax post)
   #:use-module (Flax utils)
+  #:use-module (Flax reader)
 
   #:use-module (ice-9 match)
   #:use-module (ice-9 rdelim)
@@ -26,3 +27,8 @@
   (metadata get-post-metadata)
   (sxml get-post-sxml set-post-sxml))
 
+;; read one post and return  post object
+(define (read-post file-name)
+  (let-values ((path-to-file-name (get-absolute-path file-name))
+	       ((meta-data content) ((get-reader-proc sxml-reader) (load path-to-file-name)))) 
+    (make-post file-name meta-data content)))

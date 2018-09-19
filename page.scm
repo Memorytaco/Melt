@@ -37,3 +37,12 @@
 (define (create-writer)
   (lambda (contents port)
     (display contents port)))
+
+(define* (page post build-directory #:key (writer (create-writer)))
+  (let ((file-name (get-post-file-name post))
+	(sxml-content (get-post-sxml post))
+	(metadata (get-post-metadata post)))
+    (let ((page* (make-page file-name (sxml->html sxml-content) writer))
+	  (target-file (string-append build-directory "/" (get-post-file-name post))))
+      (call-with-output-file target-file
+	((get-page-writer page*) (get-page-contents page*) target-file)))))
