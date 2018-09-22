@@ -1,4 +1,3 @@
-;; NOTE : done
 
 (define-module (Flax reader)
   #:use-module (srfi srfi-1) ;;alist-delete procedure

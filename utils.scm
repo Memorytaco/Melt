@@ -1,4 +1,3 @@
-;; NOTE : done
 (define-module (Flax utils)
   #:use-module (Flax site)
   
@@ -64,22 +63,23 @@
       #f))
 
 ;; create directory
+;; mark !! need to improve!!!!!!!!!!!!!!!!!!!!!!!!!!
 (define (mkdir-p dir)
   "Create the dir just like use makedir bash command but clever"
-  (let ((dir-list (decompose-file-name dir))
-	(envirement-list (decompose-file-name (getcwd))))
-    (while (pair? dir-list)
-      (set! envirement-list (append envirement-list (list (car dir-list))))
+  (define dir-list (decompose-file-name dir))
+  (let ((file-name (if (absolute-file-name? dir)
+		       (string-append "/" (car dir-list))
+		       (car dir-list))))
+    (while (not (eq? '() dir-list))
+      (if (file-exists? file-name)
+	  (if (not (is-directory? file-name))
+	      (begin
+		(format (current-error-port) "There conficts file exists!!~%")
+		(break)))
+	  (mkdir file-name))
       (set! dir-list (cdr dir-list))
-      (let ((file-name (compose-file-name envirement-list)))
-	(if (file-exists? file-name)
-	    (begin
-	      (if (is-directory? file-name)
-		  (continue)
-		  (begin
-		    (format (current-error-port) "There exists conflicts file name! cancel!~%")
-		    (break))))
-	    (mkdir file-name))))
+      (if (not (eq? '() dir-list))
+	  (set! file-name (string-append file-name "/" (car dir-list)))))
     #t))
 
 ;; remove the file tree list stat and return

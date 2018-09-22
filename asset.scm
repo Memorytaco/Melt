@@ -1,5 +1,5 @@
 ;; This is used to cp all resource to destination
-;; NOTE : done
+
 (define-module (Flax asset)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9) ;;record type
@@ -10,7 +10,9 @@
             is-asset?
             get-asset-source
             get-asset-target
-            cp-file-tree))
+            
+	    cp-asset
+	    cp-file-tree))
 
 (define-record-type <asset>
   (make-asset source target)
@@ -18,9 +20,10 @@
   (source get-asset-source)
   (target get-asset-target))
 
-(define (asset source target)
-  (let ((asset-src (make-asset source target)))
-    (cp-file-tree source target)))
+(define (cp-asset obj)
+  (let ((src-assets (get-asset-source obj))
+	(target-directory (get-asset-target obj)))
+    (cp-file-tree src-assets target-directory)))
 
 ;; return a list of ~nth~ same element
 (define (repeat-element-of-list nth element)
