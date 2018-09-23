@@ -1,28 +1,30 @@
 (define-module (Flax theme)
   #:use-module (Flax post)
+
   #:use-module (srfi srfi-9)
+
   #:export (make-theme
 	    is-theme?
-	    get-theme-layout
-	    set-theme-layout
+	    get-theme-processor
+	    set-theme-processor
 	    get-theme-key
 	    set-theme-key
 
 	    default-index-theme
 	    default-post-theme
-	    ))
+	    default-processor))
 
 (define-record-type <theme>
-  (make-theme key layout-sxml-tree)
+  (make-theme key processor)
   is-theme?
   (key get-theme-key set-theme-key)  ;; you'd better set the key as symbol
-  (layout-sxml-tree get-theme-layout set-theme-layout)) ;; the layout is actually a procedure which return a sxml tree
+  (processor get-theme-processor set-theme-processor)) ;; the processor is a procedure which process the sxml tree
 
 ;; the default theme for me to writing my blog
 (define (add-css sxml-tree)
   (format #t "This is only for my blog"))
 
-;; procedure will return the sxml tree
+
 (define default-index-theme
   (make-theme 'index
 	      (lambda (theme post)
@@ -32,8 +34,38 @@
 			     (link (@ (rel "stylesheet")
 				      (href "../assets/css/main/w3.css")))
 			     (link (@ (rel "stylesheet")
-				      (href "../assets/css/main/main.css"))))
-		       (body ,((get-theme-layout theme) post))))))
+				      (href "../assets/css/main/main.css")))
+			     (script (@ (type "text/javascript")
+					(src "../assets/scripts/scrollup.js")))
+			     (script (@ (type "text/javascript")
+					(src "../assets/scripts/Topmenu.js")))
+			     (script (@ (type "text/javascript")
+					(src "../assets/scripts/jquery-3.3.1.min.js")))
+			     (script (@ (type "text/javascript")
+					(src "../assets/scripts/highlight.pack.js"))))
+		       (body (@ (class "w3-light-grey"))
+			     (div (@ (id "main")
+                                     (class "w3-bar")
+                                     (onmouseover "MenuToggle(this)")
+                                     (onmouseout "MenuToggle(this)"))
+                                  ;; three bars
+                                  (div (@ (id "main")
+                                          (class "menu w3-bar-item"))
+                                       (div (@ (class "bar1")))
+                                       (div (@ (class "bar2")))
+                                       (div (@ (class "bar3"))))
+                                  (div (@ (class "w3-bar-item w3-row w3-hide")
+                                          (style "margin-left: 35%;"))
+                                       (a (@ (class "w3-bar-item w3-button w3-black")
+                                             (href "#"))
+                                          "Home")
+                                       (div (@ (class "w3-dropdown-hover"))
+                                            (button (@ (class "w3-button"))
+                                                    "tech"))))
+			     ,((get-theme-processor theme) post)
+			     (footer (@ (class "w3-container w3-center"))
+				     (div (p "Created in 2018, Powered by Flax"))))))))
+
 (define default-post-theme
   (make-theme 'post
 	      (lambda (post)
@@ -62,6 +94,11 @@
 					 "."))
 				(hr))
 			   (div (@ (class "w3-row w3-left-align"))
-				(div (@ (class "w3-card-4 w3-margin w3-white"))))
-			   ; the post content
-			   ,(post-ref post 'content))))))
+				(div (@ (class "w3-card-4 w3-margin w3-white"))
+				     ,(get-post-sxml post))))))))
+
+;; procedure will return the sxml tree
+(define default-processor
+  (make-theme 'meta
+	      (lambda* (#:key theme-list post-object)
+		((get-theme-processor (assq-ref theme-list 'index)) (assq-ref theme-list 'post) post-object))))

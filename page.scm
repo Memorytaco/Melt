@@ -31,10 +31,10 @@
 
 ;; write the rendered page to one directory
 ;; the directory can be a path
-(define (write-page page output-directory)
+(define (write-page page prefix-directory)
   (match page
     (($ <page> file-name contents writer)
-     (let ((output (string-append output-directory "/" file-name)))
+     (let ((output (string-append prefix-directory "/" file-name)))
        (mkdir-p (dirname output))
        (writer contents output)))))
 
@@ -46,9 +46,15 @@
       (close-output-port port))))
 
 ;; build the page obj and write it to disk
-(define* (page post build-directory #:key  (theme-assoc-list '()) (key '()) (writer (create-writer)))
-  (let ((file-name (get-post-file-name post))
-	(sxml-content (get-post-sxml post))
-	(metadata (get-post-metadata post)))
-    (let ((page* (make-page file-name ((get-theme-layout (assq-ref theme-assoc-list 'index)) (assq-ref theme-assoc-list 'post) post) writer)))
-      (write-page page* build-directory))))
+(define* (page post prefix-directory
+	       #:optional (theme-assoc-list '())
+	       #:key (writer (create-writer)))
+  (let ((file-name (get-post-file-name post)))
+    (let ((page* (make-page file-name
+			    (if (eq? theme-assoc-list '())
+				(get-post-sxml post)
+				((get-theme-processor (assq-ref theme-assoc-list 'meta))
+				 #:theme-list theme-assoc-list
+				 #:post-object post))
+			    writer)))
+      (write-page page* prefix-directory))))

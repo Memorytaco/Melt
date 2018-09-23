@@ -9,13 +9,12 @@
 
     #:use-module (srfi srfi-9)
     
-    #:export (create-site
+    #:export (make-site
               is-site?
-              get-site-title
               get-site-postdirectory
               get-site-build-directory
               get-site-readers
-              get-site-builders
+              get-site-theme
 	      
 	      build-site
 	      site))
@@ -27,15 +26,11 @@
 ;; ~readers~ a list of reader objects
 ;; ~builders~ a list of procedures for building pages
 (define-record-type <site>
-  (make-site title author asset theme posts-directory build-directory readers)
+  (make-site asset theme posts-directory build-directory readers)
   is-site?
-  ;; the site title which is a string
-  (title get-site-title)
-  ;; author is a string which is your name or something else
-  (author get-site-author)
   (asset get-site-asset set-site-asset)  ;; the asset obj
   (theme get-site-theme set-site-theme)  ;; theme must be a list of themes
-  ;; string which is where the posts are
+  ;; string or string list which is where the posts are
   (posts-directory get-site-postdirectory)
   ;; the object directory where the builded page is sended to
   (build-directory get-site-build-directory)
@@ -45,43 +40,58 @@
 
 ;; create the site object and return it 
 (define* (site #:key
-	       (title "Welcome to Flax!")
-	       (author "Memorytoco")
-	       (asset (make-asset "assets" "site"))
+	       (posts-directory "Metapost")
+	       (build-directory "BlogSite")
+	       (asset (make-asset "assets" "BlogSite"))
 	       ;; the theme field contains an assoc list
 	       (theme `((index . ,default-index-theme)
-			(post . ,default-post-theme)))
-               (posts-directory "posts")
-               (build-directory "site")
+			(post . ,default-post-theme)
+			(meta . ,default-processor)))
                (readers '(sxml-reader html-reader)))
-  (make-site title
-	     author
-	     asset
+  (make-site asset
 	     theme
 	     posts-directory
 	     build-directory
 	     readers))
 
 ;; write the content to the disk
-(define* (write-content posts-directory build-directory #:key theme-assoc-list)
+(define* (write-content posts-directory prefix-directory #:optional theme-assoc-list)
   (let* ((file-tree-list (get-file-tree-list posts-directory)))
-    (set! file-tree-list (cdr file-tree-list))
-    (while (not (eq? '() file-tree-list))
-      (if (list? (car file-tree-list))
-	  ;; the element is directory
-	  (let ((build-directory* (string-append build-directory "/" (caar file-tree-list)))
-		(posts-directory* (string-append posts-directory "/" (caar file-tree-list))))
-	    (mkdir-p build-directory)
-	    (write-content posts-directory
-			   build-directory
-			   #:theme-assoc-list theme-assoc-list))
-	  ;; the element is a file
-	  (begin
-	    ;; mark -------------------------------
-	    (page (read-post (string-append posts-directory "/" (car file-tree-list))) build-directory
-		  #:theme-assoc-list theme-assoc-list)))
-      ;; update the list 
-      (set! file-tree-list (cdr file-tree-list)))))
+    (if (pair? file-tree-list)
+	(begin
+	  (set! file-tree-list (cdr file-tree-list))
+	  (while (not (eq? '() file-tree-list))
+	    (if (list? (car file-tree-list))
+		;; the element is directory which contains at least one file , the file may be a directory too!
+		(let ((prefix-directory* (string-append prefix-directory "/" (caar file-tree-list)))
+		      (posts-directory* (string-append posts-directory "/" (caar file-tree-list))))
+		  (mkdir-p prefix-directory)
+		  (write-content posts-directory*
+				 prefix-directory*
+				 theme-assoc-list))
+		;; the element is a file
+		(if (is-directory? (string-append posts-directory "/" (car file-tree-list)))
+		    ;; no matter whether the directory contains file, create it
+		    (mkdir-p (string-append prefix-directory "/" (car file-tree-list)))
+		    (begin
+		      (if (not (file-exists? prefix-directory))
+			  (mkdir-p prefix-directory))
+		      (page (read-post (string-append posts-directory "/" (car file-tree-list)))
+			    prefix-directory
+			    theme-assoc-list))))
+	    ;; update the list, and process the rest list elements
+	    (set! file-tree-list (cdr file-tree-list))))
+	(if (is-directory? file-tree-list)
+	    ;; no matter whether the directory contains file, create it
+	    (mkdir-p (string-append prefix-directory "/" file-tree-list))
+	    (begin
+	      (if (file-exists? prefix-directory)
+		  (if (not (is-directory? prefix-directory))
+		      (format (current-error-port) "When building pages. find there exists conflict files!! ~%Whose name is \"~a\".~%~%" prefix-directory))
+		  (mkdir-p prefix-directory))
+	      (page (read-post file-tree-list)
+		    prefix-directory
+		    theme-assoc-list))))))
 
 ;; This procedure will not be deleted!! Just develop it!
 ;; get the site object and build the site
@@ -90,6 +100,20 @@
 	(build-directory (get-site-build-directory obj))
 	(assets-obj (get-site-asset obj))
 	(theme-assoc-list (get-site-theme obj)))
-    (cp-asset assets-obj)
-    (write-content posts-directory build-directory #:theme-assoc-list theme-assoc-list)) ;; temporary execution mark!!!!!
+    ;; cp the asset src file
+    (if (pair? assets-obj)
+	(while (not (eq? '() assets-obj))
+	  (if (file-exists? (get-asset-target (car assets-obj)))
+	      (format (current-error-port) "Warning!! There already exists one \"~a\"!~%" (get-asset-target (car assets-obj)))
+	      (begin
+		(cp-asset (car assets-obj))
+		(format #t "Install source file successfully!~%")))
+	  (set! assets-obj (cdr assets-obj)))
+	(if (file-exists? (get-asset-target assets-obj))
+	      (format (current-error-port) "Warning!! There already exists one \"~a\"!~%" (get-asset-target assets-obj))
+	      (begin
+		(cp-asset assets-obj)
+		(format #t "Install source file successfully!~%"))))
+    ;; read the post and build the page and write them to the disk 
+    (write-content posts-directory build-directory theme-assoc-list))
   (format #t "Building successful!!~%"))

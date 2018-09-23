@@ -33,7 +33,7 @@
 ;; read one post and return  post object
 (define (read-post file-name)
   (let-values (((meta-data content) ((get-reader-proc sxml-reader) file-name)))
-    (make-post file-name meta-data content)))
+    (make-post (basename file-name) meta-data content)))
 
 (define (post-ref post key)
   (assq-ref (get-post-metadata post) key))
