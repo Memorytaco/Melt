@@ -3,7 +3,7 @@
 (define-module (Flax page)
   #:use-module (Flax post)
   #:use-module (Flax html)
-  #:use-module (Flax theme)
+  #:use-module (Flax process)
 
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-9)
@@ -47,14 +47,13 @@
 
 ;; build the page obj and write it to disk
 (define* (page post prefix-directory
-	       #:optional (theme-assoc-list '())
+	       #:optional (process-layer default-process-layer)
 	       #:key (writer (create-writer)))
   (let ((file-name (get-post-file-name post)))
     (let ((page* (make-page file-name
-			    (if (eq? theme-assoc-list '())
-				(get-post-sxml post)
-				((get-theme-processor (assq-ref theme-assoc-list 'meta))
-				 #:theme-list theme-assoc-list
-				 #:post-object post))
+			    ((get-processor (assq-ref process-layer 'meta))
+			     #:process-layer process-layer
+			     ;; the process-object is an post-object
+			     #:process-object post)
 			    writer)))
       (write-page page* prefix-directory))))

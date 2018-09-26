@@ -1,10 +1,9 @@
-
 (define-module (Flax site)
     #:use-module (Flax reader)
     #:use-module (Flax page)
     #:use-module (Flax post)
     #:use-module (Flax asset)
-    #:use-module (Flax theme)
+    #:use-module (Flax process)
     #:use-module (Flax utils)
 
     #:use-module (srfi srfi-9)
@@ -14,7 +13,8 @@
               get-site-postdirectory
               get-site-build-directory
               get-site-readers
-              get-site-theme
+              get-site-process-layer
+	      set-site-process-layer
 	      
 	      build-site
 	      site))
@@ -26,10 +26,10 @@
 ;; ~readers~ a list of reader objects
 ;; ~builders~ a list of procedures for building pages
 (define-record-type <site>
-  (make-site asset theme posts-directory build-directory readers)
+  (make-site asset process-layer posts-directory build-directory readers)
   is-site?
   (asset get-site-asset set-site-asset)  ;; the asset obj
-  (theme get-site-theme set-site-theme)  ;; theme must be a list of themes
+  (process-layer get-site-process-layer set-site-process-layer)  ;; process-layer must be a list of processes
   ;; string or string list which is where the posts are
   (posts-directory get-site-postdirectory)
   ;; the object directory where the builded page is sended to
@@ -43,19 +43,17 @@
 	       (posts-directory "Metapost")
 	       (build-directory "BlogSite")
 	       (asset (make-asset "assets" "BlogSite"))
-	       ;; the theme field contains an assoc list
-	       (theme `((index . ,default-index-theme)
-			(post . ,default-post-theme)
-			(meta . ,default-processor)))
+	       ;; the process field contains an assoc list
+	       (process-layer default-process-layer)
                (readers '(sxml-reader html-reader)))
   (make-site asset
-	     theme
+	     process-layer
 	     posts-directory
 	     build-directory
 	     readers))
 
 ;; write the content to the disk
-(define* (write-content posts-directory prefix-directory #:optional theme-assoc-list)
+(define* (write-content posts-directory prefix-directory #:optional process-layer)
   (let* ((file-tree-list (get-file-tree-list posts-directory)))
     (if (pair? file-tree-list)
 	(begin
@@ -68,7 +66,7 @@
 		  (mkdir-p prefix-directory)
 		  (write-content posts-directory*
 				 prefix-directory*
-				 theme-assoc-list))
+				 process-layer))
 		;; the element is a file
 		(if (is-directory? (string-append posts-directory "/" (car file-tree-list)))
 		    ;; no matter whether the directory contains file, create it
@@ -78,7 +76,7 @@
 			  (mkdir-p prefix-directory))
 		      (page (read-post (string-append posts-directory "/" (car file-tree-list)))
 			    prefix-directory
-			    theme-assoc-list))))
+			    process-layer))))
 	    ;; update the list, and process the rest list elements
 	    (set! file-tree-list (cdr file-tree-list))))
 	(if (is-directory? file-tree-list)
@@ -91,7 +89,7 @@
 		  (mkdir-p prefix-directory))
 	      (page (read-post file-tree-list)
 		    prefix-directory
-		    theme-assoc-list))))))
+		    process-layer))))))
 
 ;; This procedure will not be deleted!! Just develop it!
 ;; get the site object and build the site
@@ -99,7 +97,7 @@
   (let ((posts-directory (get-site-postdirectory obj))
 	(build-directory (get-site-build-directory obj))
 	(assets-obj (get-site-asset obj))
-	(theme-assoc-list (get-site-theme obj)))
+	(process-layer (get-site-process-layer obj)))
     ;; cp the asset src file
     (if (pair? assets-obj)
 	(while (not (eq? '() assets-obj))
@@ -115,5 +113,5 @@
 		(cp-asset assets-obj)
 		(format #t "Install source file successfully!~%"))))
     ;; read the post and build the page and write them to the disk 
-    (write-content posts-directory build-directory theme-assoc-list))
+    (write-content posts-directory build-directory process-layer))
   (format #t "Building successful!!~%"))

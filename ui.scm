@@ -40,4 +40,6 @@
      (build))
     (("build" args ...)
      (build #:config-file (car args)))
+    (("serve")
+     (format #t "Not ready now, Sorry!~%"))
     (_ (show-flax))))

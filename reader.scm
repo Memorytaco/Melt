@@ -1,5 +1,7 @@
 
 (define-module (Flax reader)
+  #:use-module (Flax utils)
+  
   #:use-module (srfi srfi-1) ;;alist-delete procedure
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-11)
@@ -8,8 +10,6 @@
   #:use-module (ice-9 match)
   #:use-module (ice-9 regex)
   #:use-module (sxml simple)
-
-  #:use-module (Flax utils)
 
   #:export (make-reader
             is-reader?
