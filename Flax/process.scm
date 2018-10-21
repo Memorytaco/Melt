@@ -9,14 +9,41 @@
 	    get-processor
 	    set-processor
 
-	    default-process-layer))
+	    default-process-layer
+	    process-ref
+	    processor-ref))
 
+
+;; defien the record of <process>
 (define-record-type <process>
   (make-process key processor)
   is-process?
   (key get-process-key set-process-key)  ;; you'd better set the key as symbol
   (processor get-processor set-processor)) ;; the processor is a procedure which process the sxml tree
 
+
+;; return the process from the process-layer otherwise
+;; return '()
+(define (process-ref process-layer key)
+  (assq-ref process-layer key))
+
+;; return the processor of one process in process-layer
+(define (processor-ref process-layer key)
+  (get-processor (process-ref process-layer key)))
+
+
+;; read each post, genereate an alist of post path , not completed!!!!!!!!!!!!!!
+(define (Hello)
+  (format #t "This is not done!!~%"))
+
+;; ---------------------------the default process layer------------------------------------------------
+;; this template require these keywords in post
+;; img    -- the preview image path, from the index file to that image, pure String
+;; title  -- the title of the post, pure String
+;; author -- Your name, pure String
+;; date   -- the date the post posted, Pure String
+;; tag    -- The type of the post, Pure String
+;; this will show later in the end of the file
 (define default-meta-process
   (make-process 'meta
 		(lambda* (#:key process-layer process-object)
@@ -64,7 +91,7 @@
 ;; date if none output "today" -- date is a string
 ;; img if none don't display the image -- img is a src string
 ;; tag if none output "none" -- tag is a !!string list!!
-;; content -- must have! otherwise you will get one post with out content 
+;; content -- must have! otherwise you will get one post without content 
 (define default-process-layer
   `((meta . ,default-meta-process)
     (index . ,default-index-process)

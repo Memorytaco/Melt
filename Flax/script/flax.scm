@@ -1,14 +1,9 @@
-#!/usr/bin/guile 
+#!/usr/bin/guile --no-auto-compile
 -*- scheme -*-
 !#
 
 ;; command option
 ;; --no-auto-compile
-
-
-;; NOTE: for test
-(add-to-load-path 
-    "/home/eilliot/Lasga/Repository/Local_Repository/Guile/Dev")
 
 ;;Add modules here
 (use-modules (Flax ui))

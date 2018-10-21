@@ -1,10 +1,9 @@
-;; the page data type
-
 (define-module (Flax page)
   #:use-module (Flax post)
   #:use-module (Flax html)
   #:use-module (Flax process)
 
+  #:use-module (ice-9 regex)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-26)
@@ -18,10 +17,14 @@
             write-page
 	    create-writer
 	    page))
-;;
+
 ;; define the record <page>
 ;; ~file-name~ is a string
-;; ~contents~ is a html code
+;; ~contents~ is the page content
+;; ~writer~ is the procedure to write the
+;;          content to disk and the procedure may do
+;;          some extra job like converting the content
+;;          to some formats
 (define-record-type <page>
     (make-page file-name contents writer)
     is-page?
@@ -49,11 +52,12 @@
 (define* (page post prefix-directory
 	       #:optional (process-layer default-process-layer)
 	       #:key (writer (create-writer)))
-  (let ((file-name (get-post-file-name post)))
+  (let ((file-name (regexp-substitute #f (string-match ".[a-zA-Z]+$" (get-post-file-name post)) ;; use regexp to change the ext to "html"
+				      'pre ".html")))
     (let ((page* (make-page file-name
 			    ((get-processor (assq-ref process-layer 'meta))
 			     #:process-layer process-layer
-			     ;; the process-object is an post-object
+			     ;; the process-object is a post-object
 			     #:process-object post)
 			    writer)))
       (write-page page* prefix-directory))))

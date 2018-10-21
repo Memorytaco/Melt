@@ -3,6 +3,7 @@
   
   #:use-module (ice-9 ftw)
   #:use-module (ice-9 match)
+  #:use-module (ice-9 regex)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-13)
   #:use-module (srfi srfi-19)
@@ -13,11 +14,12 @@
             compose-file-name
             mkdir-p
             delete-file-recursively
-            make-user-module
             remove-stat
 	    is-directory?
             get-file-tree-list
-	    config-load))
+	    make-user-module
+	    config-load
+	    string-split-at))
 
 ;; return the absolute path of the file
 ;; TODO : need to do better
@@ -98,37 +100,17 @@
 (define (get-file-tree-list file-name)
   (remove-stat (file-system-tree file-name)))
 
-;; delete file
-(define* (delete-file-recursively dir #:key follow-mounts?)
-  "Delete DIR recursively, like `rm -rf', without following symlinks.  Don't
-follow mount points either, unless FOLLOW-MOUNTS? is true.  Report but ignore
-errors."
-  (let ((dev (stat:dev (lstat dir))))
-    (file-system-fold (lambda (dir stat result)    ; enter?
-                        (or follow-mounts?
-                            (= dev (stat:dev stat))))
-                      (lambda (file stat result)   ; leaf
-                        (delete-file file))
-                      (const #t)                   ; down
-                      (lambda (dir stat result)    ; up
-			(rmdir dir))
-                      (const #t)                   ; skip
-                      (lambda (file stat errno result)
-                        (format (current-error-port)
-				"warning: failed to delete ~a: ~a~%"
-				file (strerror errno)))
-                      #t
-                      dir
-		      
-                      ;; Don't follow symlinks.
-                      lstat)))
-
-;; return a new user module with the additional modules
-;; loaded
-(define make-user-module
-  (lambda (modules)
-    (let ((module (make-fresh-user-module)))
+;; return a new user module with the additional modules loaded
+(define (make-user-module modules)
+  (let ((module (make-fresh-user-module)))
       (for-each (lambda (iface)
                   (module-use! module (resolve-interface iface)))
                 modules)
-      module)))
+      module))
+
+(define (string-split-at str char-pred)
+  (let ((i (string-index str char-pred)))
+    (if i
+	(list (string-take str i)
+	      (string-drop str (1+ i)))
+	(list str))))

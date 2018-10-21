@@ -1,5 +1,3 @@
-;; This is used to cp all resource to destination
-
 (define-module (Flax asset)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9) ;;record type
@@ -39,9 +37,9 @@
       (let ((src-file-name (string-append src-path "/" src-tree))
             (dest-file-path (string-append prefix "/" src-tree)))
         (if (is-directory? src-file-name)
-            (mkdir dest-file-path)
+            (mkdir-p dest-file-path)
             (copy-file src-file-name dest-file-path)))
-      (begin (mkdir (string-append prefix "/" (car src-tree)))
+      (begin (mkdir-p (string-append prefix "/" (car src-tree)))
              (map file-tree-move (cdr src-tree)
                   (repeat-element-of-list (length (cdr src-tree))
                                           (string-append src-path "/" (car src-tree)))
@@ -49,7 +47,7 @@
                                           (string-append prefix "/" (car src-tree)))))))
 ;;
 (define (cp-file-tree src prefix)
-  (mkdir (get-absolute-path prefix))
+  (mkdir-p (get-absolute-path prefix))
   (file-tree-move (get-file-tree-list src)
                   (dirname (get-absolute-path src))
                   (get-absolute-path prefix)))
