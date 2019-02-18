@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+if (( $# == 0)) ; then
+  echo -e '\x1B[37;1msubcommand:' '\x1B[0m'
+  echo '    1) install'
+  echo '    2) uninstall'
+  exit 0
+fi
+
+install() {
+  mkdir -p -v "$HOME/.local/share"
+  mkdir -p -v "$HOME/.local/bin"
+
+  if ! [ -e "$HOME/.local/share/melt" ] ; then
+    cp -r melt "$HOME/.local/share"
+  fi
+
+  cp -f melt/script/melt.scm "$HOME/.local/bin/melt"
+  export PATH="$PATH:$HOME/.local/bin"
+  export CHEZSCHEMELIBDIRS="$HOME/.local/share"
+  echo 'A temp environment Has been set'
+  echo 'If you want to use it for ever, please add the'
+  echo 'following lines to your shell configure file, like .bashrc'
+
+  echo ''
+  echo 'export PATH="$PATH:$HOME/.local/bin"'
+  echo 'export CHEZSCHEMELIBDIRS="$HOME/.local/share"'
+}
+
+uninstall() {
+  rm -rf $HOME/.local/share/melt
+  rm -f $HOME/.local/bin/melt
+  echo -e '\x1B[33;1mUninstall Complete!\x1B[0m'
+  echo 'remember to delete PATH and CHEZSCHEMELIBDIRS varibles'
+}
+
+
+case $1 in
+  install)
+    install;;
+  uninstall)
+    uninstall;;
+esac
