@@ -5,8 +5,6 @@
 Here is a first cli demo. It just has some basic interface now. it doesn't have 
 any real function currently.
 
-Will add more cli function in it for previewing.
-
 This is not a formal release though.
 
 ## Is there a demo page to view before i download it?
@@ -25,6 +23,12 @@ But i'm not quite familiar with front end so it may be ugly.
 $ ./helper install # use this to install
 $ ./helper uninstall # use this to uninstall
 ```
+
+## current status
+* add subcommand logic now
+* will add more subcommands to complete the function
+* building lago help system and lago shell now
+* adding build command
 
 ## maybe you are more interested on my temp blog
 Here is it . --> [Lago](https://memorytoco.github.io/Lago/) <--
