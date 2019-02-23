@@ -51,7 +51,7 @@
   ;; otherwise return the value
   (define (chain-data-query key chain)
 	(if (chain? chain)
-		(if (element-exist? key (chain-data-keys chain))
+		(if (memv key (chain-data-keys chain))
 			(cdr (assq key (chain-data-alist chain)))
 			#f)
 		(error chain "argument should be type chain!")))
@@ -76,9 +76,9 @@
           (error 'data "in init-chain : data should be 'data type"))
       (let ((chain (make-chain condition (list execution) data)))
         (cond
-		 [(element-exist? 'chain (chain-data-keys chain))
+		 [(memv 'chain (chain-data-keys chain))
 		  (error 'data "You shouldn't use 'chain as key!")]
-		 [(element-exist? 'hooks (chain-data-keys chain))
+		 [(memv 'hooks (chain-data-keys chain))
 		  (error 'data "You shouldn't use 'hooks as key!")])
 		
 		(chain-data-update! chain (create-data '(chain) `(,chain)))
@@ -133,7 +133,7 @@
         (error 'hook "hook type is not 'proc! : hook-execute")))
 
   (define (chain-hooks-list-query chain hook-type-key)
-	(if (not (element-exist? hook-type-key '(proc data)))
+	(if (not (memv hook-type-key '(proc data)))
 		(error 'hook-type-key "key is not 'proc or 'data! : chain-hooks-list-query"))
 	(let ((hooks-alist (chain-data-query 'hooks chain)))
 	  (cdr (assq hook-type-key hooks-alist))))
@@ -175,7 +175,7 @@
       (error 'chain "must be a chain record!")]
      [(not (hook? hook))
       (error 'hook "must be a hook record!")]
-     [(not (element-exist? symbol symbol-list))
+     [(not (memv symbol symbol-list))
       (error 'symbol "must be 'before, 'after or 'data(if hook type is data) symbol!")])
 
 	(cond
@@ -195,7 +195,7 @@
          (error 'chain "must be a chain record!")]
         [(not (hook? hook))
          (error 'hook "must be a hook record!")]
-        [(not (element-exist? symbol symbol-list))
+        [(not (memv symbol symbol-list))
          (error 'symbol "must be 'before, 'after or 'data(if hook type is data) symbol!")])
        (cond
         [(eq? symbol 'before)

@@ -7,7 +7,6 @@
           hash-ref
           assq-ref
 		  make-alist
-          element-exist?
           alist->hash-table
           alist-delete
           alist?
@@ -201,15 +200,4 @@
        [(list? arg)
         (and (not (atom? (car arg)))
 			 (not (list? (car arg))))])))
-  
-  (define element-exist?
-    (lambda (element arg-list)
-      (cond
-       [(null? arg-list)
-        #f]
-       [else
-        (if (equal? element (car arg-list))
-            #t
-            (element-exist? element (cdr arg-list)))])))
-  
   )

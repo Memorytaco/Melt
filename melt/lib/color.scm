@@ -3,9 +3,11 @@
   (export color-sequence
 		  cdisplay
 		  gemcolor
-		  ctext)
+		  ctext
+		  bar)
   (import (scheme))
 
+  (define bar "█")
 
   (define (gemcolor color-sequence)
 	(string-append (string #\033)

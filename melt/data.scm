@@ -31,7 +31,7 @@
 		(do ((keys (data-keys arg) (cdr keys))
 			 (alist (data-cont arg)))
 			((null? keys) (data-cont data))
-		  (if (element-exist? (car keys) (data-keys data))
+		  (if (memv (car keys) (data-keys data))
 			  (begin
 				(update-data! data `(,(car keys)))
 				(update-data! data `(,(assq (car keys)

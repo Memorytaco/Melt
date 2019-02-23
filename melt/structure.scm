@@ -228,8 +228,7 @@
 		   command?
 		   command-name
 		   command-desc
-		   command-proc
-		   command-help]
+		   command-proc]
 		  (define-record-type
 			  command
 			(nongenerative melt-command)
@@ -238,9 +237,7 @@
 			 (immutable name command-name)
 			 ;; string, one line description
 			 (immutable description command-desc)
-			 ;; procedure to do something
-			 (immutable procedure command-proc)
-			 ;; procedure, show the command options and help
-			 (immutable help command-help))))
+			 ;; procedure for the command, accept arguments
+			 (immutable procedure command-proc))))
   
   )
