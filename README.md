@@ -7,8 +7,15 @@ any real function currently.
 
 This is not a formal release though.
 
+## Part Preview
+- the init welcome page(use css framework)
+![welcome](welcomePreview.png)
+
 ## Is there a demo page to view before i download it?
-Yes, it is. You can View my Blog [Here](https://memorytoco.github.io/Lasga/).
+
+Yes, it is. Now the blog is not working.
+
+You can View my Blog [Here](https://memorytoco.github.io/Lasga/).
 It is purely genereted by **melt** along with some css style and maybe some js.
 But i'm not quite familiar with front end so it may be ugly.
 
@@ -25,10 +32,13 @@ $ ./helper uninstall # use this to uninstall
 ```
 
 ## current status
-* add subcommand logic now
+* [x] add subcommand logic now
 * will add more subcommands to complete the function
-* building lago help system and lago shell now
-* adding build command
+  - [x] add init command
+  - [x] add exe command
+  - [ ] add serve command
+* building `lesh` help system
+  - [ ] build a fake shell for the system
 
 ## maybe you are more interested on my temp blog
 Here is it . --> [Lago](https://memorytoco.github.io/Lago/) <--
