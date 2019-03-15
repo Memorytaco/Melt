@@ -41,7 +41,7 @@ $ ./helper uninstall # use this to uninstall
   - [ ] build a fake shell for the system
 * `3%` building markdown parser
 * `15%` adding error trackers
-* `9%` adding unite test framework for melt
+* `9%` adding unit test framework for melt
 
 ## maybe you are more interested on my temp blog
 Here is it . --> [Lago](https://memorytoco.github.io/Lago/) <--
