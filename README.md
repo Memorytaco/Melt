@@ -37,8 +37,11 @@ $ ./helper uninstall # use this to uninstall
   - [x] add init command
   - [x] add exe command
   - [ ] add serve command
-* building `lesh` help system
+* `9%` building `lesh` help system
   - [ ] build a fake shell for the system
+* `3%` building markdown parser
+* `15%` adding error trackers
+* `9%` adding unite test framework for melt
 
 ## maybe you are more interested on my temp blog
 Here is it . --> [Lago](https://memorytoco.github.io/Lago/) <--
