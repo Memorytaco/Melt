@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+## this is the install script fo melt, will refine it later
+
 if (( $# == 0)) ; then
   echo -e '\x1B[37;1msubcommand:' '\x1B[0m'
   echo '    1) install'
