@@ -1,20 +1,24 @@
 (library (melt post)
-  (export parse-post
-          post-ref)
+  (export post-meta-query
+		  post-attr-query
+		  create-post)
   (import (scheme)
           (melt structure)
-          (melt utils)
-          (melt parser parser))
+          (melt utils))
   
   (import type-post)
-  (import type-parser)
+  (import type-data)
+
+  (define create-post
+	(case-lambda
+	  [(meta attr cont)
+	   (make-post meta attr cont)]))
   
+  ;; query the data in post and return the key value pair if exists
+  (define (post-meta-query key post)
+	(assq key (data-cont (post-meta post))))
   
-  ;; read one post and return post object
-  (define (parse-post file-name parser)
-    (let-values (((attr-data content) ((parser-proc parser) file-name)))
-	  (make-post `((src-path . ,file-name)) attr-data content)))
+  (define (post-attr-query key post)
+	(assq key (data-cont (post-meta post))))
   
-  (define (post-ref key post)
-	(cdr (assq key (post-attr post))))
   )

@@ -1,5 +1,6 @@
 (library (melt renderer)
-  (export create-renderer)
+  (export create-renderer
+		  update-renderer-data!)
   (import (scheme)
 		  (melt structure)
 		  (melt invoke)

@@ -1,6 +1,8 @@
 (library (melt page)
-  (export page
-		  create-writer)
+  (export create-page
+		  compose
+		  create-writer
+		  page-list-query)
   (import (scheme)
           (melt srfi match)
           (melt parser sxml)
@@ -9,30 +11,29 @@
           (melt asset)
 		  (melt renderer)
           (melt structure)
-          (melt product))
+          (melt glob parser))
   
   (import type-page)
-  (import type-post)
+
+  (define (create-page meta cont comt)
+	(make-page meta cont comt))
+
+  (define (compose page renderer-list)
+	(let ((generate-sxml (page-cont page)))
+	  (generate-sxml page renderer-list)))
+
+  (define (page-list-query key page-list)
+	(if (null? page-list)
+		#f
+		(if (eq? key (page-meta (car page-list)))
+			(car page-list)
+			(page-list-query key (cdr page-list)))))
   
-  ;; convert the sxml to html and write it to disk
-  (define (create-writer)
-    (lambda (sxml output)
-      (let ((port (open-output-file output 'replace)))
+  ;; convert the sxml to html and write it to a file
+  (define (create-writer output-file-name)
+    (lambda (sxml)
+      (let ((port (open-output-file output-file-name 'replace)))
         (sxml->html sxml port)
         (close-output-port port))))
   
-  ;; it requires a 'src-path attr in page
-  ;; write the src page into the directory
-  (define (write-page page directory)
-    (let ((obj-path (cdr (assq 'src-path (page-attr page))))
-		  (content (page-cont page)))
-	  (mkdir-r (string-append directory "/" (path-parent obj-path)))
-	  ((cdr (page-proc page)) content
-	   (string-append directory "/" obj-path))))
-
-    
-  ;; build the page obj and write it to disk
-  (define page
-    (lambda ()
-	  (display "not ready!\n")))
   )

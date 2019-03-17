@@ -1,0 +1,64 @@
+# 第一行代码
+hello nice
+# 得的骄傲弗兰克
+##根目录下的布局
+![hello nice](htps ljdjf)
+[this is a line](lsdkjfla)
+
+***
+------
+***********
+`zhege 是一个code`
+| 文件                  | 类别 | 作用                          |
+| --------------------- | ---- | ----------------------------- |
+| .gradle 和 .idea      | d    | android studio 自动的生成文件 |
+| app                   | d    | 主要的工作目录                |
+| build                 | d    | 编译时使用的目录              |
+| gradle                | d    | gradle wrapper 的配置文件     |
+| build.gradle          | f    | 全局的 gradle 构建脚本        |
+| gradle.properties     | f    | 全局的 gradle 配置文件        |
+| gradlew 和 gradle.bat | f    | 命令行中执行 gradle 文件的    |
+| \*.iml                | f    | idea 相关                     |
+| local.properties      | f    | 指定本机中 Android SDK 路径的 |
+| settings.gradle       | f    | 用于指定项目中所有引入的模块  |
+![this is a picture](hello)
+hello![this is another picture](hello)
+
+## /app 目录下的布局
+
+| 文件                | 类别 | 作用                                             |
+| ------------------- | ---- | ------------------------------------------------ |
+| build               | d    | 和外层的类似                                     |
+| libs                | d    | 第三方 jar 包的存放点                            |
+| androidTest         | d    | android 测试用例                                 |
+| java                | d    | 放置 java 代码的地方                             |
+| res                 | d    | 所有的资源文件, 包括布局, 图片, 字体等           |
+| AndroidManifest.xml | f    | 整个项目的配置文件程序中的几个组建都要在这里注册 |
+| test                | d    | 单元测试用的                                     |
+| app.iml             | f    | idea 的文件                                      |
+| build.gradle        | f    | app 模块的构建脚本                               |
+| proguardrules.pro   | f    | 代码混淆, 主要用来保护代码                       |
+
+图片放在 drawable 目录, 布局放在 layout 目录下, 字符串放在 values 下.
+
+## 使用活动(activity)
+
+使用资源文件
+
+```java
+public class ActivityName extends AppCompatActiity{
+  @Override
+  protected void onCreate(Bundle savedInstanceState)
+  {
+    super.onCreate(savedInstanceState);
+    // 使用R.layout.名字 来设置活动的布局
+    setContentView(R.layout.layoutfortheActivity);
+  }
+}
+```
+
+资源放在什么文件夹下就使用`R.文件夹.name`来在 java 中引用. 在 xml 中使用`@`来引用.
+
+## /app/res 目录下的布局
+
+所有以`drawable`开头的目录都是存放**图片**的. 所有以`mipmap`开头的目录都是用来存放**应用图标**的, 所有`values`开头的文件夹都是用来存放**字符串, 样式, 颜色**等**配置**的. 所有以`layout`开头的文件夹都是用来存放**布局文件**的.

@@ -3,55 +3,55 @@
          (export melt)
          (import (scheme)
                  (melt utils)
-				 (melt lib color)
+				 (melt lib console)
 				 (melt version)
 				 (melt command)
 				 (melt structure)
                  (melt srfi match))
 
          (define (show-version)
-           (display (string-append (ctext "[37;1m" "melt")
-								   (ctext "[38;5;15m" " version ")
-								   (ctext "[38;5;165m" "0.1.6")
+
+           (display (string-append (gem "[37;1m" "melt")
+								   (gem "[38;5;15m" " version ")
+								   (gem "[38;5;165m" "0.0.2")
 								   "\n")))
 
 		 ;; the basic information
          (define (introduction)
-           (cdisplay (ctext "[37m" "This is melt! Meta Excellent Local Note System.\n")
-					 (ctext "[37m" "Please use \"-h\" or \"--help\" to get further help.\nFor more information please follow")
-					 (ctext "[36m" " github io page.\n")))		 
+           (gem-display (gem "[37m" "This is melt! Meta Excellent Local Note System.\n")
+					 (gem "[37m" "Please use \"-h\" or \"--help\" to get further help.\nFor more information please follow")
+					 (gem "[36m" " github io page.\n")))		 
 
          ;; basic help information
          (define (help)
-           (cdisplay (ctext "[37;1m" "melt ")
-					 (ctext "[38;5;102m" "[options] [command] [command options] \n"))
-		   (cdisplay (ctext "[38;5;80m" "available options are :")
-					 (ctext "[38;5;111m" " -h | -v | -vs | -l\n")))
+           (gem-display (gem "[37;1m" "melt ")
+					 (gem "[38;5;102m" "[options] [command] [command options] \n"))
+		   (gem-display (gem "[38;5;80m" "available options are :")
+					 (gem "[38;5;111m" " -h | -v | -vs | -l\n")))
 
 		 ;; to structure commands
-		 (define (welcome flag)
+		 (define (prepare flag)
 		   (define (melt-load)
-			 (cond
-			  [(file-exists? ".melt")
-			   (load ".melt")
-			   #t]
-			  [(file-exists? "melt.scm")
-			   (load "melt.scm")
-			   #t]
-			  [else #f]))
+			 (if (file-exists? ".melt")
+				 (cond
+				  [(file-directory? ".melt")
+				   (load ".melt/settings.scm")
+				   #t]
+				  [else #f])
+				 #f))
 		   
 		   (if flag
 			   (if (melt-load)
 				   (begin
-					 (cdisplay (ctext "[38;5;10m" "==========")
-							   (ctext "[38;5;142m" "  Available commands :\n"))
+					 (gem-display (gem "[38;5;10m" "==========")
+							   (gem "[38;5;142m" "  Available commands :\n"))
 					 (show-commands %builtin-commands)				 
 					 (show-commands %user-commands))
 				   (begin
-					 (cdisplay (ctext "[38;5;196m" "Error! ")
-							   (ctext "[38;5;222m" "melt configure file doesn't exist! Only show builtin commands\n"))
-					 (cdisplay (ctext "[38;5;10m" "==========")
-							   (ctext "[38;5;142m" "  Available commands :\n"))
+					 (gem-display (gem "[38;5;196m" "Error! ")
+							   (gem "[38;5;222m" "melt configure file doesn't exist! Only show builtin commands\n"))
+					 (gem-display (gem "[38;5;10m" "==========")
+							   (gem "[38;5;142m" "  Available commands :\n"))
 					 (show-commands %builtin-commands)))
 			   (melt-load)))
 
@@ -68,12 +68,12 @@
               (show-version-history)
 			  (exit 0)]
 			 [(or ("-l") ("--list"))
-			  (welcome #t)
+			  (prepare #t)
 			  (exit 0)]
              (else (if (null? extra-args)
 					   (begin (introduction)
 							  (exit 0))
-					   (welcome #f))))
+					   (prepare #f))))
 		   (let ((command-built (command-query (string->symbol (car extra-args))
 											   %builtin-commands))
 				 (command-user (command-query (string->symbol (car extra-args))
@@ -86,8 +86,8 @@
 			   (apply command-user
 					  (cdr extra-args))]
 			  [else
-			   (cdisplay (ctext "[38;5;99m" "Command not available!\n"))
-			   (welcome #t)]))
+			   (gem-display (gem "[38;5;99m" "Command not available!\n"))
+			   (prepare #t)]))
 		   )
 
 		 

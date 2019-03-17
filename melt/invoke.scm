@@ -8,7 +8,7 @@
 		  chain-data-update!
 		  chain-condition-value
           chain-hooks-list-query
-		  
+		  chain-hooks-update!
 		  
           create-hook
           hook-execute
@@ -26,6 +26,8 @@
   (import type-chain)
   (import type-data)
 
+  ;; create hook , if type is data, the arg must be data type
+  ;; otherwise if type is proc, the arg must be (procdure . args-list)
   (define create-hook
     (lambda (name type arg)
       (cond
@@ -51,10 +53,8 @@
   ;; otherwise return the value
   (define (chain-data-query key chain)
 	(if (chain? chain)
-		(if (memv key (chain-data-keys chain))
-			(cdr (assq key (chain-data-alist chain)))
-			#f)
-		(error chain "argument should be type chain!")))
+		(data-value-query key (chain-data chain))
+		(error chain "in chain-data-query : invoke.scm")))
   
   ;; keys and datas must be a list and must be match
   ;; if the keys doesn't exist, create it!
@@ -81,9 +81,9 @@
 		 [(memv 'hooks (chain-data-keys chain))
 		  (error 'data "You shouldn't use 'hooks as key!")])
 		
-		(chain-data-update! chain (create-data '(chain) `(,chain)))
-		(chain-data-update! chain (create-data '(hooks) '(((data . ())
-														   (proc . ())))))
+		(chain-data-update! chain '(chain) `(,chain))
+		(chain-data-update! chain '(hooks) `(,(create-data '(data proc)
+														   '(() ()))))
         chain)))
   
   ;; execute chain
@@ -92,38 +92,45 @@
         (do ((execute-list (chain-execution chain) (cdr execute-list)))
             ((null? execute-list) #t)
           ((car execute-list)))))
-  
+
+  ;; if the condition is procedure, execute it to get the value
+  ;; if the condition is a value, return it
   (define (chain-condition-value chain)
     (let ((condition (chain-condition chain)))
       (cond
        [(procedure? condition)
         (condition)]
        [else condition])))
-  
+
+  ;; return type proc hook's procedure
   (define (get-hook-proc hook)
     (if (and (hook? hook)
              (eq? 'proc (hook-type hook)))
         (car (hook-proc-arg hook))
         (error hook "argument must be hook type or hook must be 'proc type! : get-hook-proc")))
-  
+
+  ;; return type proc hook's arguments
   (define (get-hook-args hook)
     (if (and (hook? hook)
              (eq? 'proc (hook-type hook)))
         (cdr (hook-proc-arg hook))
         (error hook "argument must be hook type or hook must be 'proc type! : get-hook-args")))
-  
+
+  ;; return type data hook's keys in its data field
   (define (get-hook-keys hook)
     (if (and (hook? hook)
              (eq? 'data (hook-type hook)))
-        (car (hook-data hook))
+        (data-keys (hook-data hook))
         (error hook "argument must be hook type or hook must be 'data type! : get-hook-keys")))
-  
+
+  ;; return type data hook's assoc list
   (define (get-hook-alist hook)
     (if (and (hook? hook)
              (eq? 'data (hook-type hook)))
-        (cdr (hook-data hook))
+        (data-cont (hook-data hook))
         (error hook "argument must be hook type or hook must be 'data type! : get-hook-alist")))
-  
+
+  ;; execute the hook
   (define (hook-execute hook)
     (if (eq? 'proc (hook-type hook))
         (apply (get-hook-proc hook)
@@ -132,43 +139,36 @@
 				   (error 'hook-execute "the arguments must be wrapped in a list")))
         (error 'hook "hook type is not 'proc! : hook-execute")))
 
-  (define (chain-hooks-list-query chain hook-type-key)
+  ;; get the proc or data type hooks list, it's a list of names
+  (define (chain-hooks-list-query hook-type-key chain)
 	(if (not (memv hook-type-key '(proc data)))
 		(error 'hook-type-key "key is not 'proc or 'data! : chain-hooks-list-query"))
-	(let ((hooks-alist (chain-data-query 'hooks chain)))
-	  (cdr (assq hook-type-key hooks-alist))))
+	(let ((chain-hooks (chain-data-query 'hooks chain)))
+	  (data-value-query hook-type-key chain-hooks)))
 
-    ;; not export this function.
+  ;; not export this function.
   (define (chain-hooks-update! chain hook symbol)
 	(define symbol-list '(before after data))
 	
 	;; just return the updated data, doesn't modify anything
 	(define (update-chain-hook-procedure chain hook symbol)
-	  (create-data '(hooks)
-				   `((,(assq 'data
-							 (chain-data-query 'hooks
-											   chain))
-					  (proc . ,(cond
-								[(eq? 'before symbol)
-								 (cons (hook-name hook)
-									   (cdr (assq 'proc
-												  (chain-data-query 'hooks
-																	chain))))]
-								[(eq? 'after symbol)
-								 (append (cdr (assq 'proc
-													(chain-data-query 'hooks
-																	  chain)))
-										 (list (hook-name hook)))]))))))
-
+	  (let ((hook-name-list (chain-hooks-list-query 'proc chain))
+			(name (hook-name hook)))
+		 (update-data! (chain-data-query 'hooks chain)
+					   (create-data '(proc)
+									(list (cond [(eq? 'before symbol)
+												 (cons name
+													   hook-name-list)]
+												[(eq? 'after symbol)
+												 (append hook-name-list
+														 (list name))]))))))
+	
 	(define (update-chain-hook-data chain hook symbol)
-	  (create-data '(hooks)
-				   `(((data ,(cons (hook-name hook)
-								   (cdr (assq 'data
-											  (chain-data-query 'hooks
-																chain)))))
-					  ,(assq 'proc
-							 (chain-data-query 'hooks
-											   chain))))))
+	  (let ((hook-name-list (chain-hooks-list-query 'data chain))
+			(name (hook-name hook)))
+		(update-data! (chain-data-query 'hooks chain)
+					  (create-data '(data)
+								   `(,(cons name hook-name-list))))))
 	;; check the input
 	(cond
      [(not (chain? chain))
@@ -180,9 +180,9 @@
 
 	(cond
 	 [(eq? 'proc (hook-type hook))
-	  (chain-data-update! chain (update-chain-hook-procedure chain hook symbol))]
+	  (update-chain-hook-procedure chain hook symbol)]
 	 [(eq? 'data (hook-type hook))
-	  (chain-data-update! chain (update-chain-hook-data chain hook symbol))]
+	  (update-chain-hook-data chain hook symbol)]
 	 [else (error 'hook "hook type is not correct!")]))
   
   ;; add-hook to the chain
@@ -197,7 +197,8 @@
          (error 'hook "must be a hook record!")]
         [(not (memv symbol symbol-list))
          (error 'symbol "must be 'before, 'after or 'data(if hook type is data) symbol!")])
-       (cond
+       ;; update the data and the hooks name list
+	   (cond
         [(eq? symbol 'before)
          (execution-set! chain
                          (cons (lambda ()
@@ -217,6 +218,7 @@
 			   (chain-hooks-update! chain hook symbol))
 			 (error 'hook "type is not data!"))]
         [else (error symbol "the symbol must be 'before 'after or 'data!")])]
+	  ;; accept two arg, it's an abbr
       [(chain hook)
 	   (cond
 		[(eq? 'data (hook-type hook))
@@ -224,9 +226,5 @@
 		[(eq? 'proc (hook-type hook))
 		 (add-hook! chain hook 'after)]
 		[else (error 'hook "incorrect hook type!")])]))
-  
-  (define chain-connect
-    (lambda ()
-      (format #t "not ready")))
   
   )

@@ -1,0 +1,55 @@
+(import (melt structure))
+(import (melt glob))
+(import (melt command))
+(import (melt page))
+(import (melt site))
+(import (melt data))
+(import (melt invoke))
+(import type-site)
+(import type-page)
+
+(define index-page (create-page 'index
+								(lambda ()
+								  `(html
+									(head (meta (@ (charset "UTF-8")))
+										  (meta (@ (name "viewport")
+												   (content "width=device-width, initial-scale=1")))
+										  (link (@ (rel "stylesheet")
+												   (href "asset/bulma/css/bulma.min.css")))
+										  (title "Melt"))
+									(section (@ (class "section"))
+											 (div (@ (class "container"))
+												  (h1 (@ (class "title"))
+													  "welcome to Melt!!")
+												  (p (@ (class "subtitle"))
+													 "You just init your first"
+													 (strong  "melt")
+													 "local web page!")
+												  (button (@ (class "button is-primary is-large is-loading"))
+														  "hello")))))
+								'()))
+(define pages (create-hook 'pages 'data (create-data '(index)
+													 (list index-page))))
+(add-hook! %%chain pages)
+
+(define %site (create-site (create-data
+							'(index)
+							`(,(lambda (page) ((create-writer "public/index.html")
+										  ((page-cont page))))))
+						   (create-data)
+						   (create-data)))
+
+
+(define site-hook (create-hook 'site 'data (create-data '(site)	`(,%site))))
+(add-hook! %%chain site-hook)
+(define (build chain)
+  (let ((site (chain-data-query 'site chain)))
+    (if (site? site)
+		(let ((page (chain-data-query 'index chain))
+			  (site-layout-data (site-layout site)))
+		  (display "i'm in \n")
+		  ((data-value-query 'index site-layout-data) page))
+		(error 'site "This is not a site object!"))))
+
+
+(add-hook! %%chain (create-hook 'build 'proc `(,build . (,(chain-data-query 'chain %%chain)))))

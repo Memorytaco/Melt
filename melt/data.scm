@@ -1,6 +1,7 @@
 (library (melt data)
   (export create-data
-		  update-data!)
+		  update-data!
+		  data-value-query)
   (import (scheme)
 		  (melt structure)
 		  (melt utils))
@@ -14,7 +15,7 @@
 	  (cond
 	   [(null? args)
 		(make-data '()
-				   '(() . ()))]
+				   '())]
 	   [else
 		((lambda (keys values)
 		   (make-data keys (map cons keys values)))
@@ -53,5 +54,10 @@
 									   (data-cont data)))
 		  (data-keys-set! data (remove (car keys) (data-keys data))))]
 	   [else (display "Didn't do anything!\n")])))
+
+  (define (data-value-query key data)
+	(if (memv key (data-keys data))
+		(cdr (assq key (data-cont data)))
+		#f))
     
   )
