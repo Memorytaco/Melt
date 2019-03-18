@@ -22,7 +22,7 @@
   ;; keywords in a line context  
   (define %%inner-keyword '(#\* #\_ #\[ #\` #\!))
   ;; keywords starting a line
-  (define %%line-keyword '(#\# #\! #\- #\* #\`))
+  (define %%line-keyword '(#\# #\! #\- #\* #\` #\>))
   ;; empty chars
   (define %%empty-chars '(#\newline #\space))
 
@@ -112,6 +112,9 @@
 		   [(check-chars '(#\newline #\! #\[) port)
 			(display "get an image, end paragraph \n")
 			sxml]
+		   [(check-chars '(#\newline #\>) port)
+			(display "get a block quote, end paragraph \n")
+			sxml]
 		   [(check-chars '(#\newline) port)
 			(display "get one newline\n")
 			(position-forward port 1)
@@ -167,6 +170,8 @@
 	   ;; to test ![] ()
 	   [(check-chars '(#\!) port)
 		(list 'img (parse-img port))]
+	   [(check-chars '(#\>) port)
+		(parse-blockquote port)]
 	   [(check-chars '(#\` #\` #\`) port)
 		;; use let* ensure first evalute attr
 		(let* ((attr (parse-block-code-type (list) port))
@@ -218,6 +223,11 @@
 	  (position-forward port 1) ;; consume #\(
       (let ((link (list->string (context-parse '(#\)) '() '() port))))
         `((img (@ (src ,link) (title ,title)))))))
+
+  ;; parse the blockquote
+  (define (parse-blockquote port)
+	(position-forward port 1)
+	(list 'blockquote (list 'p (compose-paragraph (list) port))))
 
   ;; parse the link
   (define (parse-link port)

@@ -1,6 +1,6 @@
 (import (scheme))
 (import (melt lib markdown))
-(import (melt parser sxml))
+(import (melt lib sxml))
 
 (define-syntax test-input
   (syntax-rules ()
