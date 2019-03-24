@@ -7,11 +7,11 @@
           (melt srfi match)
           (melt parser sxml)
           (melt utils)
+		  (melt lib sxml)
 		  (melt lib file)
           (melt asset)
 		  (melt renderer)
-          (melt structure)
-          (melt glob parser))
+          (melt structure))
   
   (import type-page)
 

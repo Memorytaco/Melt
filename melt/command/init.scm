@@ -17,7 +17,10 @@
   ;; create some files
   (define (initprocedure)
 	(mkdir ".melt")
-	(system "touch .melt/settings.scm"))
+	(system "touch .melt/settings.scm")
+	(system "touch .melt/melt.scm")
+	(mkdir ".melt/fasl")
+	(mkdir ".melt/resource"))
 
 
   ;; todo 

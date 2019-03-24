@@ -1,6 +1,7 @@
 #!chezscheme
 (library (melt glob)
-  (export %%chain)
+  (export %%chain
+		  %%settings)
   (import (scheme)
 		  (melt structure)
 		  (melt invoke)
@@ -14,4 +15,6 @@
   (define %%chain (init-chain #t
 							  (lambda () (display "Building ...\n"))
 							  (create-data)))
+
+  (define %%settings (create-data))
   )
