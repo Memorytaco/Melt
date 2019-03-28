@@ -3,35 +3,22 @@
   (melt lib markdown)
   (export markdown->sxml
           scone
-          check-chars
-          position-forward
-          context-parse)
+          pattern-match
+          char-forward
+          position-back
+          eof)
   (import (scheme))
 
-  ;; this parser will append char, symbol,
-  ;; `@ symbol, empty list to the sxml list
-
-  ;; support form
-  ;; [name](link)
-  ;; ![name](link)
-  ;; **hello** or __hello__
-  ;; *hello* or _hello_
-  ;; ```class ... codes ```
-  ;; `code`
-  ;; *** or --- equal (hr)
-
-  ;; keywords in a line context
-  (define %%inner-keyword '(#\* #\_ #\[ #\` #\!))
-  ;; keywords starting a line
-  (define %%line-keyword '(#\# #\! #\- #\* #\` #\>))
-  ;; empty chars
-  (define %%empty-chars '(#\newline #\space))
-
-
   ;; define append but contain one single element
-  (define-syntax scone
-    (syntax-rules ()
-      ((_ ls new) (append ls (list new)))))
+  (define (scone ls new-ele)
+    (cond
+      [(null? new-ele)
+       ls]
+      [else
+        (append ls (list new-ele))]))
+
+  ;; define the eof object for pattern
+  (define eof (eof-object))
 
   ;; if n larger than position, do nothing
   (define (position-back port n)
@@ -40,239 +27,443 @@
                                    (- position n)
                                    position))))
 
-  ;; forward n position
-  (define (position-forward port n)
-    (set-port-position! port (+ n (port-position port))))
+  ;; forward n chars
+  (define (char-forward port n)
+    (do ((count n (- count 1)))
+      ((= count 0))
+      (read-char port)))
 
-  ;; check the following chars are equal to the charlist
-  ;; if the chars are empty list, return true
-  (define (check-chars chars port)
-    (define ($$check chars position port)
-      (if (null? chars)
+  ;; #######################################################
+  ;; the pattern is a char list. port is a text port.
+
+  ;; pattern can include a nested char list.
+  ;; normal pattern is (#\space #\a ...)
+  ;; if the pattern is (#\space #a), it match " a", return the pattern means true.
+
+  ;; and a nested pattern is (#\space (#\a #\b #\c) #\\)
+  ;; this pattern match " a\" and " b\" and " c\".
+  ;; the nested char match a single char.
+  ;; if the nested list is '(), it will match any char, any!
+  (define (pattern-match pattern port)
+    (define ($$check pattern position port)
+      (if (null? pattern)
           (begin (set-port-position! port position) #t)
-          (if (eq? (read-char port) (car chars))
-              ($$check (cdr chars) position port)
-              (begin (set-port-position! port position) #f))))
-    ($$check chars (port-position port) port))
+          (let ((pattern-atom (car pattern)))
+            (cond
+              [(null? pattern-atom)
+               (read-char port) ;; accept it, if the atom is '()
+               ($$check (cdr pattern) position port)]
+              [(and (list? pattern-atom)
+                    (eq? (car pattern-atom) '!))
+               (if (not (member (read-char port) pattern-atom))
+                   ($$check (cdr pattern) position port)
+                   (begin (set-port-position! port position) #f))]
+              [(list? pattern-atom)
+               (if (member (read-char port) pattern-atom)
+                   ($$check (cdr pattern) position port)
+                   (begin (set-port-position! port position) #f))]
+              [(char? pattern-atom)
+               (if (eq? (read-char port) pattern-atom)
+                   ($$check (cdr pattern) position port)
+                   (begin (set-port-position! port position) #f))]
+              [(eof-object? pattern-atom)
+               (if (eof-object? (read-char port))
+                   ($$check (cdr pattern) position port)
+                   (begin (set-port-position! port position) #f))]
+              [else
+                (error 'pattern-atoms "unproperly pattern atom")]))))
+    ($$check pattern (port-position port) port))
 
-  ;; define markdown->sxml
+  (trace-define (g-check-list ls)
+                (lambda (ob)
+                  (equal? ls ob)))
+
+  ;; use the pattern to determine which context to enter in
+  ;; return the parsed sxml and pass previous context(procedure) to it
+  ;; so it can return to previous context
+  ;; 这里之后可以使用cc来进行错误处理和异常报告排错, 需要和define-FA 联合
+
+  (trace-define (context-transform sxml port pattern-ls FAs cur-context)
+                (call/cc
+                  (lambda (cc)
+                    (do ((patterns pattern-ls (cdr patterns))
+                         (key-context-list (map cons pattern-ls FAs)))
+                      ((null? patterns) #f)
+                      (display "this means last don't pass\n")
+                      (let ((cur-pattern (car patterns)))
+                        (if (pattern-match cur-pattern port)
+                            (cc ((lambda (item) (cur-context (scone sxml item) port))
+                                 ((cdr (assp (g-check-list cur-pattern) key-context-list)) (list) port)))))))))
+
+  ;; check each terminate pattern and end the context if matched returning value.
+  ;; forward-numbers list is to forward the port position if matched.
+  ;; if not match, return #f.
+  ;; the value must use delay to wrap
+  (trace-define (context-return value port pattern-ls forward-numbers)
+                (call/cc
+                  (lambda (cc)
+                    (do ((end-pattern (cons `(,eof) pattern-ls) (cdr end-pattern))
+                         (query-forward-numbers (map cons (cons `(,eof) pattern-ls)
+                                                     (cons 0 forward-numbers))))
+                      ((null? end-pattern) #f)
+                      (let* ((cur-pattern (car end-pattern))
+                             (number (cdr (assp (g-check-list cur-pattern) query-forward-numbers))))
+                        (if (pattern-match cur-pattern port)
+                            (begin (char-forward port number) (cc (force value)))))))))
+
+  ;; define a FA
+  ;; end-lambda must be (lambda (sxml port) bodys...)
+  ;; TODO 之后可以在else后边加入错误处理
+  (define-syntax define-FA
+    (syntax-rules ()
+      [(_ name end-lambda (end-patterns number-list) (trans-patterns FAs) )
+       (define name
+         (lambda (sxml port)
+           (cond
+             [(context-return (delay (end-lambda sxml port))
+                              port end-patterns number-list)]
+             [(context-transform sxml port trans-patterns FAs name)]
+             [else (error name "no proper transform context definition")])))]))
+
+  ;; (g 'x 3) ==> (x x x)
+  (define (g ele num)
+    (cond
+      [(= num 0)
+       '()]
+      [(> num 0)
+       (cons ele (g ele (- num 1)))]))
+
+  ;;; above is the common utility
+  ;;; #################################################################
+  ;;; #################################################################
+  ;;; #################################################################
+  ;;; below is the definition
+
+  ;; define makrdown-> sxml
   (define (markdown->sxml port)
-    (top-parse (list) %%line-keyword port))
+    (pattern-top-parse (list) port))
 
-  ;; the top field schedule 总调度器
-  ;; top-parse will remain last readed char in port
-  (define (top-parse sxml keywords port)
-    (let ((next (peek-char port)))
-      (cond
-        [(eof-object? next)
-         sxml]
-        ;; drop blank char
-        [(member next %%empty-chars)
-         (position-forward port 1)
-         (top-parse sxml keywords port)]
-        ;; judge whether it is a line keyword
-        [(member next keywords)
-         (top-parse (scone sxml (context-switch 'line port))
-                    keywords port)]
-        ;; if not line keyword, treat it as a paragraph
-        [else
-          (let ((paragraph (compose-paragraph (list 'p) port)))
-            (top-parse (scone sxml paragraph) keywords port))])))
+  ;;; =========================== A ===== U ====== X ======================
+  ;; return the escaped char
 
-  ;; Done
-  ;; to generate a (p ...) element
-  (define (compose-paragraph sxml port)
-    (let ((next (peek-char port)))
-      (if (eof-object? next)
-          sxml
-          (cond
-            [(check-chars '(#\newline #\newline) port)
-             (position-forward port 2)
-             sxml]
-            [(check-chars '(#\newline #\` #\` #\`) port)
-             (position-forward port 1)
-             sxml]
-            [(check-chars '(#\newline #\#) port)
-             (position-forward port 1)
-             sxml]
-            [(check-chars '(#\newline #\* #\space) port)
-             (position-forward port 1)
-             sxml]
-            [(check-chars '(#\newline #\- #\space) port)
-             (position-forward port 1)
-             sxml]
-            [(check-chars '(#\newline #\! #\[) port)
-             sxml]
-            [(check-chars '(#\newline #\> #\space) port)
-             sxml]
-            [(check-chars '(#\newline) port)
-             (position-forward port 1)
-             (let ((line (context-parse '(#\newline) %%inner-keyword (list) port)))
-               (compose-paragraph (scone (scone sxml #\space) line) port))]
-            [else
-              (let ((line (context-parse '(#\newline) %%inner-keyword (list) port)))
-                (compose-paragraph (scone sxml line) port))]))))
+  (define (aux-escape sxml port)
+    (char-forward port 1)
+    (read-char port))
 
-  ;; it's a context parser, could be invoked in any context
-  ;; of course including itself
-  ;; terminators and keywords are all char list
+  ;; generate procedure which ignore 'number' chars
+  (define (aux-ignore number)
+    (lambda (sxml port)
+      (char-forward port number) '()))
 
-  ;; when return, the terminator in port will disappear
-  (define (context-parse terminators keywords sxml port)
-    ;; terminators is the end of parse
-    ;; keywords for parsing
-    ;; sxml is the returned sxml-tree
-    (let ((next (peek-char port)))
-      (cond
-        [(or (eof-object? next)
-             (member next terminators))
-         (if (not (eq? next #\newline)) (read-char port))
-         sxml]
-        [(eq? next #\\)
-         (position-forward port 1)
-         (let ((escaped (read-char port)))
-           (context-parse terminators keywords (scone sxml escaped) port))]
-        ;; parse keywords
-        [(member next keywords)
-         (let ((special-block (context-switch 'inner port)))
-           (context-parse terminators keywords
-                          (scone sxml special-block) port))]
-        ;; common chars, just append to the sxmls
-        [else
-          (context-parse terminators keywords
-                         (scone sxml (read-char port)) port)])))
+  ;; read one char
+  (define (aux-common sxml port)
+    (let ((char (read-char port)))
+      (if (eof-object? char)
+          '()
+          char)))
 
+  ;; for the list - and *
+  (define (pattern-parse-list sxml port)
+    (display "not ready") '())
 
-  ;; type is 'inner or 'line, an inner switcher
-  ;; make sure the first char is the key char
-  (define (context-switch type port)
+  ;; the top environment(context)
+  (define-FA pattern-top-parse
+             (lambda (sxml port) `(,sxml))
+             [(list `(,eof)) '(0)]
+             [(list '(#\\ ())
+                    '((#\newline #\space))
+                    '(#\` #\` #\`)
+                    '(#\#)
+                    '(#\* #\space)
+                    '(#\- #\space)
+                    '(#\! #\[)
+                    '(#\> #\space)
+                    '(()))
+              (list aux-escape
+                    (aux-ignore 1)
+                    pattern-parse-block-code
+                    pattern-parse-header
+                    pattern-parse-list
+                    pattern-parse-list
+                    pattern-parse-img
+                    pattern-parse-block-quote
+                    pattern-parse-paragraph)])
+
+  ;;; ==================== paragraph ===================
+  ;; return the paragraph
+  (define-FA pattern-parse-paragraph
+             (lambda (sxml port) `(p ,sxml))
+             [(list '(#\newline #\newline)
+                    '(#\newline #\` #\` #\`)
+                    '(#\newline #\#)
+                    '(#\newline #\* #\space)
+                    '(#\newline #\- #\space)
+                    '(#\newline #\! #\[)
+                    '(#\newline #\> #\space))
+              (list 2 1 1 1 1 1 1)]
+             [(list '(#\\ ())
+                    '(#\newline)
+                    '(#\[)
+                    '(#\`)
+                    '(#\* #\*)
+                    '(#\- #\-)
+                    '(#\*)
+                    '(#\-)
+                    '(()))
+              (list aux-escape
+                    aux-paragraph-space
+                    pattern-parse-link
+                    pattern-parse-inline-code
+                    pattern-parse-strong
+                    pattern-parse-strong
+                    pattern-parse-em
+                    pattern-parse-em
+                    aux-common)])
+
+  (define (aux-paragraph-space sxml port)
+    (context-return (delay #\space) port (list '(#\newline)) (list 1)))
+
+  ;; =====================  block-quote =======================
+  ;; return block quote
+  (define-FA pattern-parse-block-quote
+             (lambda (sxml port) sxml)
+             ((list '(#\newline #\newline)
+                    '(#\newline #\` #\` #\`)
+                    '(#\newline #\#)
+                    '(#\newline #\* #\space)
+                    '(#\newline #\- #\space)
+                    '(#\newline #\! #\[)
+                    '(#\newline #\> #\space))
+              (list 2 1 1 1 1 1 1))
+             ((list '(#\> #\space)
+                    '(()))
+              (list (aux-ignore 2)
+                    aux-parse-block-quote)))
+
+  (define-FA aux-parse-block-quote
+             (lambda (sxml port) `(blockquote (p ,sxml)))
+             ((list '(#\newline #\newline)
+                    '(#\newline #\` #\` #\`)
+                    '(#\newline #\#)
+                    '(#\newline #\* #\space)
+                    '(#\newline #\- #\space)
+                    '(#\newline #\! #\[)
+                    '(#\newline #\> #\space))
+              (list 0 0 0 0 0 0 0))
+             ((list '(#\\)
+                    '(#\newline)
+                    '(#\`)
+                    '(#\[)
+                    '(#\* #\*)
+                    '(#\- #\-)
+                    '(#\*)
+                    '(#\-)
+                    '(()))
+              (list aux-escape
+                    aux-paragraph-space
+                    pattern-parse-inline-code
+                    pattern-parse-link
+                    pattern-parse-strong
+                    pattern-parse-strong
+                    pattern-parse-em
+                    pattern-parse-em
+                    aux-common)))
+
+  ;;;   =============== header ===============
+  ;; return the header
+  (define-FA pattern-parse-header
+             (lambda (sxml port) `(,sxml))
+             [(list '(#\newline)) (list 1)]
+             [(list '(#\#))
+              (list aux-parse-header)])
+
+  (define (aux-parse-header sxml port)
     (cond
-      [(eq? type 'line)
+      [(pattern-match '(#\newline) port)
+       sxml]
+      [(pattern-match '(#\# #\space) port)
+       (char-forward port 2)
+       (list 'h1 (aux-parse-header sxml port))]
+      [(pattern-match '(#\# #\# #\space) port)
+       (char-forward port 3)
+       (list 'h2 (aux-parse-header sxml port))]
+      [(pattern-match '(#\# #\# #\# #\space) port)
+       (char-forward port 4)
+       (display "in 3\n")
+       (list 'h3 (aux-parse-header sxml port))]
+      [(pattern-match '(#\# #\# #\# #\# #\space) port)
+       (char-forward port 5)
+       (list 'h4 (aux-parse-header sxml port))]
+      [(pattern-match '(#\# #\# #\# #\# #\# #\space) port)
+       (char-forward port 6)
+       (list 'h5 (aux-parse-header sxml port))]
+      [(pattern-match '(#\# #\# #\# #\# #\# #\# #\space) port)
+       (char-forward port 7)
+       (list 'h6 (aux-parse-header sxml port))]
+      [else (aux-parse-header (scone sxml (read-char port)) port)]))
+
+  ;; =================  block code ==========================
+  ;; return the block code
+  (define-FA pattern-parse-block-code
+             (lambda (sxml port) `(pre (code ,(car sxml) ,(car (cdr sxml)))))
+             ((list '(#\` #\` #\` #\newline)) (list 4))
+             ((list '(#\` #\` #\`)
+                    '(()))
+              (list aux-parse-block-code-type
+                    aux-parse-block-code-cont)))
+
+  (define aux-parse-block-code-type
+    (case-lambda
+      [(sxml port)
        (cond
-         ;; to test ![] ()
-         [(check-chars '(#\!) port)
-          (list 'img (parse-img port))]
-         [(check-chars '(#\>) port)
-          (parse-blockquote port)]
-         [(check-chars '(#\` #\` #\`) port)
-          ;; use let* ensure first evalute attr
-          (let* ((attr (parse-block-code-type (list) port))
-                 (block (parse-block-code (list) port)))
-            (if attr
-                `(pre (code (@ ,attr) ,block))
-                `(pre (code ,block))))]
-         ;; change from line to paragraph
-         [(check-chars '(#\`) port)
-          (list 'p (compose-paragraph (list) port))]
-         [(check-chars '(#\#) port) (parse-header port 0)]
-         [(check-chars '(#\- #\- #\-) port)
-          (parse-hr port)]
-         [(check-chars '(#\* #\* #\*) port)
-          (parse-hr port)]
-         [(check-chars '(#\- #\space) port)
-          (list 'p (compose-paragraph (list) port))]
-         [(check-chars '(#\* #\space) port)
-          (list 'p (compose-paragraph (list) port))]
-         [else (error type (string-append "the char " (string (peek-char port)) " not match!!"))])]
-      [(eq? type 'inner)
+         [(context-return (lambda () `(@ (class ,(apply string sxml))))
+                          port '((#\newline)) '(1))]
+         [(pattern-match '(#\` #\` #\` #\space) port)
+          (char-forward port 4)
+          (aux-parse-block-code-type (scone sxml (read-char port)) port)]
+         [else (aux-parse-block-code-type (scone sxml (read-char port)) port)])]))
+
+  (define aux-parse-block-code-cont
+    (case-lambda
+      [(sxml port)
        (cond
-         ;; judge the type, and switch context
-         [(or (check-chars '(#\* #\*) port)
-              (check-chars '(#\_ #\_) port))
-          (list 'strong (parse-strong port))]
-         [(or (check-chars '(#\_) port)
-              (check-chars '(#\*) port))
-          (list 'em (parse-em port))]
-         [(check-chars '(#\[) port)
-          (parse-link port)]
-         [(check-chars '(#\`) port)
-          (list 'code (parse-inline-code port))]
-         [(check-chars '(#\! #\[) port)
-          (parse-img port)]
-         [(check-chars '(#\!) port)
-          (context-parse '(#\space) '() '() port)]
-         (else (display (string (peek-char port))) (display "\n")(error 'keychar (string-append "Not a special character"))))]))
+         [(pattern-match '(#\` #\` #\` #\newline) port)
+          sxml]
+         [else (aux-parse-block-code-cont
+                 (scone sxml (read-char port)) port)])]))
 
-  ;; generate hr
-  (define (parse-hr port)
-    (context-parse '(#\newline) '() (list) port)
-    (read-char port)
-    '(hr))
 
-  ;; parse the image
-  (define (parse-img port)
-    (position-forward port 2) ;; consume ![
-    (let ((title (list->string (context-parse '(#\]) '() '() port))))
-      (position-forward port 1) ;; consume #\(
-      (let ((link (list->string (context-parse '(#\)) '() '() port))))
-        `((img (@ (src ,link) (title ,title)))))))
+  ;; =================== inline code ===========================
+  ;; return the code type
+  (define-FA pattern-parse-inline-code
+             (lambda (sxml port) (cons 'code sxml))
+             [(list '(() #\`)) (list 2)]
+             [(list '(#\`)
+                    '(()))
+              (list (aux-ignore 1)
+                    aux-parse-inline-code)])
 
-  ;; parse the blockquote
-  (define (parse-blockquote port)
-    (position-forward port 1)
-    (list 'blockquote (list 'p (compose-paragraph (list) port))))
+  (define-FA aux-parse-inline-code
+             (lambda (sxml port) (scone sxml (peek-char port)))
+             [(list '(() #\`)) (list 0)]
+             [(list '(#\\ ())
+                    '(()))
+              (list aux-escape
+                    aux-common)])
 
-  ;; parse the link
-  (define (parse-link port)
-    (position-forward port 1) ;; consume [
-    (let ((name (context-parse '(#\]) '() '() port)))
-      (position-forward port 1)
-      (let ((link (list->string (context-parse '(#\)) '() '() port))))
-        (list 'a `(@ (href ,link)) name))))
+  ;; ==================== strong =============================
+  (define-FA pattern-parse-strong
+             (lambda (sxml port) (cons 'strong sxml))
+             [(list '(() #\* #\*)
+                    '(() #\_ #\_))
+              (list 3 3)]
+             [(list '(#\* #\*)
+                    '(#\_ #\_)
+                    '(()))
+              (list (aux-ignore 2)
+                    (aux-ignore 2)
+                    aux-parse-strong)])
 
-  ;; parse the strong
-  (define (parse-strong port)
-    (position-forward port 1)
-    (let ((text (context-parse (list (read-char port)) '() '() port)))
-      (position-forward port 1)
-      text))
+  (define-FA aux-parse-strong
+             (lambda (sxml port) (scone sxml (peek-char port)))
+             [(list '(() #\* #\*)
+                    '(() #\_ #\_))
+              (list 0 0)]
+             [(list '(#\\)
+                    '(()))
+              (list aux-escape
+                    aux-common)])
 
-  ;; parse em
-  (define (parse-em port)
-    (context-parse (list (read-char port)) '(#\`) '() port))
+  ;; ===================== em    ================================
+  ;; return the emphsis
+  (define-FA pattern-parse-em
+             (lambda (sxml port) (cons 'em sxml))
+             ((list '(() #\*)
+                    '(() #\_))
+              (list 2 2))
+             ((list '(#\*)
+                    '(#\_)
+                    '(()))
+              (list (aux-ignore 1)
+                    (aux-ignore 1)
+                    aux-parse-em)))
 
-  ;; parse inline code
-  (define (parse-inline-code port)
-    (context-parse (list (read-char port)) '() '() port))
+  (define-FA aux-parse-em
+             (lambda (sxml port) (scone sxml (peek-char port)))
+             ((list '(() #\*)
+                    '(() #\_))
+              (list 0 0))
+             ((list '(#\\)
+                    '(()))
+              (list aux-escape
+                    aux-common)))
 
-  ;; parse | ``` class name |
-  (define (parse-block-code-type sxml port)
-    (position-forward port 3)
-    (let ((attr (context-parse '(#\newline) '() (list) port)))
-      (position-forward port 1) ;; consume the \n, don't need it
-      `(class ,(apply string attr))))
+  ;; ====================== hr ==================================
+  ;; return (hr)
+  (define-FA pattern-parse-hr
+             (lambda (sxml port) '(hr))
+             ((list '(#\newline)) '(1))
+             ((list '(()))
+              (list aux-parse-hr)))
 
-  ;; read the full context
-  (define (parse-block-code sxml port)
-    (if (check-chars '(#\` #\` #\`) port)
-        (begin (context-parse '(#\newline) '() (list) port)
-               (read-char port) ;; consume the newline
-               sxml)
-        (let* ((line (context-parse '(#\newline) '() (list) port))
-               (newline (read-char port)))
-          (parse-block-code (scone (scone sxml line)
-                                   newline)
-                            port))))
+  (define (aux-parse-hr sxml port)
+    (read-char port) '())
 
-  (define (parse-header port count)
+  ;; ====================== link ==================================
+  (define-FA pattern-parse-link
+             (lambda (sxml port) `(a ,(car (cdr sxml)) ,(car sxml)))
+             ((list '(#\))) '(1))
+             ((list '(#\()
+                    '(#\[))
+              (list aux-parse-link-end
+                    aux-parse-link-begin)))
+
+  (define (aux-parse-link-begin sxml port)
     (cond
-      [(check-chars '(#\# #\# #\#) port)
-       (position-forward port 3)
-       (parse-header port (+ 3 count))]
-      [(check-chars '(#\# #\#) port)
-       (position-forward port 2)
-       (parse-header port (+ 2 count))]
-      [(check-chars '(#\# #\space) port)
-       (position-forward port 2)
-       (parse-header port (+ 1 count))]
-      [(check-chars '(#\#) port)
-       (position-forward port 1)
-       (parse-header port (+ 1 count))]
-      [else
-        (let ((line (context-parse '(#\newline) '() (list) port)))
-          (position-forward port 1)
-          (list (string->symbol (string-append "h" (number->string (if (> count 6)
-                                                                       6 count))))
-                line))]))
+      [(pattern-match '(#\[) port)
+       (char-forward port 1)
+       (aux-parse-link-begin sxml port)]
+      [(pattern-match '(#\]) port)
+       (char-forward port 1)
+       sxml]
+      [else (aux-parse-link-begin (scone sxml (read-char port)) port)]))
+
+  (define (aux-parse-link-end sxml port)
+    (cond
+      [(pattern-match '(#\() port)
+       (char-forward port 1)
+       (aux-parse-link-end sxml port)]
+      [(pattern-match '(#\)) port)
+       `(@ (href ,(apply string sxml)))]
+      [else (aux-parse-link-end (scone sxml (read-char port)) port)]))
+
+  ;; ======================= img ================================
+  ;; return an img
+  (define-FA pattern-parse-img
+             (lambda (sxml port) `(img ,(car (cdr sxml)) ,(car sxml)))
+             ((list '(#\))) '(1))
+             ((list '(#\()
+                    '(#\! #\[))
+              (list aux-parse-img-end
+                    aux-parse-img-begin)))
+
+  (define (aux-parse-img-begin sxml port)
+    (cond
+      [(pattern-match '(#\! #\[) port)
+       (char-forward port 2)
+       (aux-parse-img-begin sxml port)]
+      [(pattern-match '(#\]) port)
+       (char-forward port 1)
+       sxml]
+      [else (aux-parse-img-begin (scone sxml (read-char port)) port)]))
+
+  (define (aux-parse-img-end sxml port)
+    (cond
+      [(pattern-match '(#\() port)
+       (char-forward port 1)
+       (aux-parse-img-end sxml port)]
+      [(pattern-match '(#\)) port)
+       `(@ (src ,(apply string sxml)))]
+      [else (aux-parse-img-end (scone sxml (read-char port)) port)]))
 
   )
