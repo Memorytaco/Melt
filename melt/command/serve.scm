@@ -1,24 +1,24 @@
-(library (melt command serve)
-         (export serve)
-         (import (scheme)
-                 (melt structure))
+(library
+  (melt command serve)
+  (export serve-cli)
+  (import (scheme)
+          (melt lib console)
+          (melt command))
 
-         (import type-command)
+  (define (serve-help)
+    (gemd:info "the command is not ready yet"))
 
-		 (define (serve-help)
-       (display "the command is not ready yet\n"))
+  (define serve-command
+    (lambda args
+      (cond
+        [(null? args)
+         (gemd:info "the command is not ready yet")]
+        [else
+          (gemd:info "the command is not ready yet")])))
 
-     (define serve-cli
-       (lambda args
-         (cond
-           [(null? args)
-            (display "the command is not ready yet\n")]
-           [else
-             (display "the command is not ready yet\n")])))
+  (define serve-cli
+    (create-command 'serve
+                    "melt server to preview your site."
+                    serve-command))
 
-     (define serve
-       (make-command 'serve
-                     "melt server to preview your site"
-                     serve-cli))
-
-         )
+  )

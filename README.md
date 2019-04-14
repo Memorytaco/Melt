@@ -2,7 +2,7 @@
 
 I have recently successfully build the demo site. And yes, it now will work!
 
-However, i haven't written the tutorial and the manual page. will do this next week.
+Now i'm just refing this melt and modefy its api;
 
 ## Part Preview
 - the init welcome page(use css framework)
@@ -25,7 +25,7 @@ $ ./melt-install uninstall # use this to uninstall
 ```
 
 ## current status
-* [x] add subcommand logic now
+- ~~add subcommand logic now~~ done
 * will add more subcommands to complete the function
   - [x] add init command
   - [x] add exec command
