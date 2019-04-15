@@ -4,6 +4,7 @@
   (export %%invocation
           %%user-commands
           %%builtin-commands
+          %%config
           user:command-add!
           user:show-commands
           user:command-query
@@ -11,10 +12,8 @@
           inter:command-query
           inter:show-commands
 
-          user:config-query
-          user:config-add-option!
-          user:config-update-option!
-          )
+          user:config-options-query
+          user:config-update-option!)
   (import (scheme)
           (melt invoke)
           (melt data)
@@ -24,11 +23,8 @@
   ;; /////config //////
   (define %%config (create-data))
 
-  (define (user:config-query key)
-    (config-value-query key %%config))
-
-  (define (user:config-add-option! key value)
-    (config-add-option! key value %%config))
+  (define user:config-options-query
+    (melt:config-options-query %%config))
 
   (define (user:config-update-option! key value)
     (config-update-option! key value %%config))

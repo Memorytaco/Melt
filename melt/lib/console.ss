@@ -60,9 +60,9 @@
 
   ;; display list text
   (define (gemd:item text)
-    (gem:display (gem:text "[37m" "*")
-                 (gem:text "[38;5;238m[48;5;15m" "item")
-                 (gem:text "[37m" "* ")
+    (gem:display (gem:text "[37m" "|")
+                 (gem:text "[38;5;103m" "item")
+                 (gem:text "[37m" "| ")
                  text "\n"))
 
   ;; display help info

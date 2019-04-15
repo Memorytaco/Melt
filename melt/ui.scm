@@ -14,7 +14,7 @@
     (gemd:info (string-append
                  (gem:text "[37;1m" "melt")
                  (gem:text "[38;5;15m" " version ")
-                 (gem:text "[38;5;165m" "0.0.5")) ))
+                 (gem:text "[38;5;165m" "0.0.5-2")) ))
 
   ;; the basic information
   (define (introduction)

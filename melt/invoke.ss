@@ -7,6 +7,8 @@
     invoke-guard
     invoke-procs
     invoke-data
+    invoke-data-query
+    invoke-data-guard-query
     invoke-update-data!
     invoke-delete-data!
     invoke-add-proc!
@@ -21,7 +23,7 @@
     (lambda (invocation)
       (let ((proc-alist (data->alist (invoke-procs invocation))))
         (do ((procs-list (map cdr (sort (lambda (pre aft)
-                                          (> (car pre) (car aft)))
+                                          (< (car pre) (car aft)))
                                         proc-alist))
                          (cdr procs-list)))
           ((null? procs-list) (void))
@@ -52,6 +54,14 @@
 
   (define (invoke-data invocation)
     (data-value-query 'data (invocation)))
+
+  ;; data-query
+  (define (invoke-data-query key invocation)
+    (data-value-query key (invoke-data invocation)))
+
+  ;; get the data guard
+  (define (invoke-data-guard-query key invocation)
+    (data-guard-query key (invoke-data invocation)))
 
   ;; update data
   (define (invoke-update-data! key value invocation)

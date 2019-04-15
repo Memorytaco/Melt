@@ -2,8 +2,7 @@
   (melt post)
   (export post-meta-query
           post-attr-query
-          create-post
-          compose-post)
+          create-post)
   (import (scheme)
           (melt structure)
           (melt utils)
@@ -11,17 +10,11 @@
 
   (import type-post)
 
-  ;; accept two assoc list
+  ;; accept two assoc list one sxml tree
   (define create-post
     (case-lambda
       [(meta attr cont)
-       (make-post meta attr cont)]))
-
-  ;; use assoc list to compose a post
-  (define (compose-post meta-alist attr-alist cont-sxml)
-    (make-post (create-data meta-alist)
-               (create-data attr-alist)
-               cont-sxml))
+       (make-post (create-data meta) (create-data attr) cont)]))
 
   ;; query the data in post and return the value if exists
   (define (post-meta-query key post)

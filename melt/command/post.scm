@@ -5,6 +5,8 @@
           (melt uutil)
           (melt lib console)
           (melt config)
+          (melt data)
+          (melt cell)
           (melt command))
 
   (define (post data)
@@ -32,12 +34,12 @@
       (let* ((str-num-sequence (map car (get-md-post-title-list "post")))
              (numbers (sort > (map string->number str-num-sequence))))
         (if (not (null? title))
-            (write-template (car title)
-                            (string-append (config-value-query 'post data)
-                                           "/"
-                                           (number->string (+ 1 (car numbers))) ".md"))
-            (gemd:error "please provide a title\n")))))
-
+            (begin (write-template (car title)
+                                   (string-append (data-value-query 'post data)
+                                                  "/"
+                                                  (number->string (+ 1 (car numbers))) ".md"))
+                   (gemd:info (string-append "generate new post: " (car title))))
+            (gemd:error "please provide a title.")))))
 
   (define (write-template title path)
     (call-with-output-file
@@ -52,22 +54,22 @@
   ;; command list
   (define (action-list data)
     (lambda args
-      (if (not (null? args))
-          (if (equal? (car args) "-h")
-              (gem:display
-                (gem:text "[38;5;15m" "A subcommand to list post sequence\n")))
-          (list-post data))))
+      (cond
+        [(null? args)
+         ((list-post data))
+         (gemd:info "List complete :)")]
+        [(and (eq? (length args) 1) (equal? (car args) "-h"))
+         (gemd:help "A subcommand to list post sequence.")])))
 
   (define (list-post data)
     (lambda ()
-      (do ((title-list (sort (lambda (pre aft) (string>? (car pre) (car aft))) (get-md-post-title-list (config-value-query 'post data)))
+      (do ((title-list (sort (lambda (pre aft) (string>? (car pre) (car aft))) (get-md-post-title-list (data-value-query 'post data)))
                        (cdr title-list)))
-        ((null? title-list) (gem:display (gem:text "[37m" "=====\n")))
+        ((null? title-list) (gemd:info "command complete."))
         (gemd:item (string-append
                      (gem:text "[38;5;15m" (car (car title-list)))
                      " ==> "
-                     (gem:text "[38;5;15m" (cdr (car title-list)))
-                     "\n")))))
+                     (gem:text "[38;5;15m" (cdr (car title-list))))))))
 
 
   ;; ====================================================================
@@ -84,11 +86,23 @@
   ;; use external shell to call editor
   (define (call-editor data)
     (lambda (number)
-      (system (string-append (config-value-query 'editor data)
-                             " "
-                             (config-value-query 'post data)
-                             "/"
-                             number ".md"))))
-
-
+      (define editor (make-cell (data-value-query 'editor data)
+                                (lambda (value) (if value
+                                                    (begin
+                                                      (gemd:info (string-append "Got editor: " value))
+                                                      (editor value (lambda (x) x))
+                                                      value)
+                                                    (begin
+                                                      (gemd:warn "Editor not available")
+                                                      #f)))))
+      (gemd:info "invoking external editor ...")
+      (if (editor)
+          (begin
+            (system (string-append (editor)
+                                   " "
+                                   (data-value-query 'post data)
+                                   "/"
+                                   number ".md"))
+            (gemd:info "successfully quit."))
+          (gemd:help "Please add editor config in your config file."))))
   )

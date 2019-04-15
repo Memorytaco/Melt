@@ -33,7 +33,7 @@
             (scone! post-ls (parse-posts (car obj-ls) parser-list))
             (let ((raw-sxml (parse-with-parsers (car obj-ls) parser-list)))
               (if raw-sxml
-                  (scone! post-ls (compose-post
+                  (scone! post-ls (create-post
                                     `((path . ,(car obj-ls))
                                       (name . ,(path-last (path-root (car obj-ls)))))
                                     (car raw-sxml)
